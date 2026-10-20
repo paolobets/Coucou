@@ -79375,7 +79375,20 @@
       }
     },
     "Italiano" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Italiano"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Italiano"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
