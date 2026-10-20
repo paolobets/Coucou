@@ -220,7 +220,8 @@ fn show(app: &AppHandle, pill: &Pill, visible: bool) {
 }
 
 /// The display to sit on: the one under the cursor when you speak, else the
-/// primary one.
+/// island's (Settings → General → "Show Mochi on": the main display, the one
+/// under the cursor, or a chosen one), so Mochi and the pill share a screen.
 fn monitor(app: &AppHandle, on_cursor: bool) -> Option<tauri::Monitor> {
     if on_cursor {
         if let Some((cx, cy)) = platform::cursor_physical() {
@@ -234,7 +235,28 @@ fn monitor(app: &AppHandle, on_cursor: bool) -> Option<tauri::Monitor> {
             }
         }
     }
-    app.primary_monitor().ok().flatten()
+    crate::island::target_monitor(app, &crate::island::screen_pref(app))
+}
+
+/// What the pill's spot depends on: the display preference and the chosen
+/// display's position, size, scale and work area (the taskbar can move). Any
+/// change means the pill has to be placed again.
+fn placement_key(app: &AppHandle) -> Option<(String, i32, i32, u32, u32, i32, i32, u32, u32, u64)> {
+    let pref = crate::island::screen_pref(app);
+    let m = monitor(app, false)?;
+    let (p, s, wa) = (m.position(), m.size(), m.work_area());
+    Some((pref, p.x, p.y, s.width, s.height, wa.position.x, wa.position.y, wa.size.width, wa.size.height, m.scale_factor().to_bits()))
+}
+
+/// Places the pill again where it belongs now, if it is on screen. Called
+/// when the display preference is saved and when the display layout changes.
+pub fn replace(app: &AppHandle) {
+    let Some(pill) = get(app) else { return };
+    if !pill.shown.load(Ordering::Relaxed) {
+        return;
+    }
+    let state = pill.state();
+    place(app, &pill, &state.edge, state.phase == "listening");
 }
 
 fn place(app: &AppHandle, pill: &Pill, edge: &str, on_cursor: bool) {
@@ -286,6 +308,10 @@ pub fn set_hot(app: &AppHandle, rects: Vec<(f64, f64, f64, f64)>) {
 fn spawn_poll(app: AppHandle, pill: Arc<Pill>) {
     std::thread::spawn(move || {
         let mut ignoring: Option<bool> = None;
+        // Remembered across wakes so a display change while hidden is noticed
+        // the moment the pill comes back.
+        let mut last_key = None;
+        let mut ticks: u32 = 0;
         loop {
             {
                 let (lock, cv) = &pill.poll;
@@ -296,6 +322,24 @@ fn spawn_poll(app: AppHandle, pill: Arc<Pill>) {
                 }
             }
             std::thread::sleep(Duration::from_millis(33));
+
+            // Monitors get plugged in, unplugged, rearranged and rescaled, the
+            // taskbar moves, the display preference changes: a pill left where
+            // the screen was is a pill nobody can reach. Checked about twice a
+            // second, like the island does.
+            ticks = ticks.wrapping_add(1);
+            if ticks % 15 == 0 {
+                let now = placement_key(&app);
+                if now.is_some() && now != last_key {
+                    let first = last_key.is_none();
+                    last_key = now;
+                    if !first {
+                        crate::log::line("flow pill: display layout changed — placing it again".to_string());
+                        replace(&app);
+                    }
+                }
+            }
+
             let Some(win) = window(&app) else { continue };
             let (Ok(origin), Some((cx, cy))) = (win.outer_position(), platform::cursor_physical()) else { continue };
             let scale = win.scale_factor().unwrap_or(1.0);

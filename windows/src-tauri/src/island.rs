@@ -218,8 +218,8 @@ fn pick_display(pref: &str, displays: &[DisplayId]) -> Option<usize> {
 }
 
 /// The display the island lives on: a chosen one, the primary one, or the one
-/// under the cursor.
-fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
+/// under the cursor. The Flow pill sits on the same one (flow/pill.rs).
+pub(crate) fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
     let monitors = app.available_monitors().ok()?;
     let ids: Vec<DisplayId> = monitors.iter().map(describe).collect();
     if let Some(i) = pick_display(pref, &ids) {
@@ -394,13 +394,17 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     }
 }
 
+/// Settings → General → "Show Mochi on": "primary", "cursor" or an `at:` key.
+pub(crate) fn screen_pref(app: &AppHandle) -> String {
+    app.try_state::<crate::Shared>()
+        .map(|s| s.settings.lock().unwrap().screen.clone())
+        .unwrap_or_else(|| "primary".into())
+}
+
 /// Position, size and scale of the monitor the island lives on. Any change here
 /// means the island has to be placed again.
 fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
-    let pref = app
-        .try_state::<crate::Shared>()
-        .map(|s| s.settings.lock().unwrap().screen.clone())
-        .unwrap_or_else(|| "primary".into());
+    let pref = screen_pref(app);
     let m = target_monitor(app, &pref)?;
     let p = m.position();
     let size = m.size();
