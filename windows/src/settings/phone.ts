@@ -272,7 +272,7 @@ function answersBlock(makeToggle: Toggle): HTMLElement {
 const PHONE_SERVICES: [string, string][] = [
   ["integration_stripe", "Stripe"], ["integration_github", "GitHub"], ["integration_vercel", "Vercel"],
   ["integration_n8n", "n8n"], ["integration_resend", "Resend"], ["integration_notion", "Notion"], ["integration_calcom", "Cal.com"],
-  ["integration_homeassistant", "Home Assistant"],
+  ["integration_homeassistant", "Home Assistant"], ["integration_whoop", "Whoop"],
 ];
 
 /**

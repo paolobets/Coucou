@@ -778,6 +778,9 @@ function haFields(slot: number): IntegrationDef["fields"] {
 }
 const HA_KEYS: string[] = Array.from({ length: HA_SLOTS }, (_, i) => haFields(i + 1).map((f) => f.key)).flat();
 
+/** Where Whoop sends the browser back (src-tauri/src/whoop.rs REDIRECT_URI). */
+const WHOOP_REDIRECT = "http://localhost:47431/whoop";
+
 const INTEGRATIONS: IntegrationDef[] = [
   { id: "integration_stripe", name: "Stripe", color: "#0570DE",
     fields: [{ key: "stripe-api-key", label: N_("Secret key"), placeholder: "sk_live_…", secret: true }] },
@@ -800,6 +803,12 @@ const INTEGRATIONS: IntegrationDef[] = [
   { id: "integration_homeassistant", name: "Home Assistant", color: "#41BDF5",
     fields: haFields(1),
     hint: N_("A long-lived access token from your Home Assistant profile → Security. The card shows the persistent notifications, the alarm panels, the updates waiting, the problem sensors and how many lights are on, as they change.") },
+  { id: "integration_whoop", name: "Whoop", color: "#44D7B6",
+    fields: [
+      { key: "whoop-client-id", label: N_("Client ID"), placeholder: "…", secret: false },
+      { key: "whoop-client-secret", label: N_("Client secret"), placeholder: "…", secret: true },
+    ],
+    hint: N_("Create an app at developer.whoop.com with this redirect URL: {url}. Paste its Client ID and Client Secret, save them, then click Connect Whoop: your browser opens to sign in, and Coucou keeps the tokens in the {store}, never on disk.") },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
 ];
@@ -870,7 +879,40 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     };
     for (const field of def.fields) rows.append(fieldRow(field));
 
-    if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
+    if (def.hint) {
+      rows.append(h("div", { class: "hint", text: t(def.hint, { url: WHOOP_REDIRECT, store: KEY_STORE }) }));
+    }
+    if (def.id === "integration_whoop") {
+      // The sign-in: the browser opens, Whoop sends it back to Coucou's
+      // loopback port, Rust keeps the tokens. The line says where it stands.
+      const status = h("span", { class: "hint" });
+      const connect = h("button", { text: t("Connect Whoop") });
+      const forget = h("button", { text: t("Disconnect") });
+      const refresh = async () => {
+        const on = (await Bridge.whoopConnected()) ?? false;
+        status.textContent = on ? t("Whoop connected.") : t("Connect Whoop first.");
+        forget.hidden = !on;
+      };
+      connect.addEventListener("click", async () => {
+        connect.setAttribute("disabled", "");
+        status.textContent = t("Waiting for Whoop in the browser…");
+        try {
+          await Bridge.whoopConnect();
+        } catch (err) {
+          status.textContent = String(err);
+          connect.removeAttribute("disabled");
+          return;
+        }
+        connect.removeAttribute("disabled");
+        await refresh();
+      });
+      forget.addEventListener("click", async () => {
+        await Bridge.whoopDisconnect();
+        await refresh();
+      });
+      rows.append(h("div", { class: "row" }, connect, forget, status));
+      void refresh();
+    }
     if (def.id === "integration_homeassistant") {
       // Up to four houses: a slot's fields show once it has an address, or
       // after a click on the button, one slot at a time.
@@ -1375,7 +1417,7 @@ async function render() {
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
-    ...HA_KEYS,
+    ...HA_KEYS, "whoop-client-id", "whoop-client-secret",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;

@@ -48,9 +48,10 @@ const DIFF_ASKS_PER_10S: usize = 20;
 
 /// Service cards (cap `services`): read-only snapshots of what the island's service pills show, one switch per
 /// service. These are the only ids the link will ever carry.
-pub const SERVICE_IDS: [&str; 8] = [
+pub const SERVICE_IDS: [&str; 9] = [
     "integration_stripe", "integration_github", "integration_vercel", "integration_n8n",
     "integration_resend", "integration_notion", "integration_calcom", "integration_homeassistant",
+    "integration_whoop",
 ];
 const MAX_SERVICE_ITEMS: usize = 3;
 const MAX_SERVICE_TITLE_CHARS: usize = 24;

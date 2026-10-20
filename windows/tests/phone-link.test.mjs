@@ -394,6 +394,11 @@ test("service cards say what the pills say and never an address, a subject, a de
     updates: ["Core 2026.10"], problems: [], lightsOn: 2,
     notifications: [{ id: "backup", title: "Backup done", message: "Saved to https://nas.example.com/backup", createdAt: null }],
   }] });
+  service("integration_whoop", {
+    recovery: { id: "8", score: 78, hrv: 61.2, rhr: 52, calibrating: false, at: new Date(now - 3_600_000).toISOString() },
+    strain: 11.37, sleep: { performance: 88, hours: 6.5, end: new Date(now - 7_200_000).toISOString() },
+    workout: { sport: "Running", strain: 9.8, end: null },
+  });
   const cards = serviceCards(now);
   const byId = Object.fromEntries(cards.map((c) => [c.id, c]));
   assert.equal(byId.integration_stripe.headline, "12.50 EUR");
@@ -405,6 +410,8 @@ test("service cards say what the pills say and never an address, a subject, a de
   assert.equal(byId.integration_github.headline, "1.5k Total stars");
   assert.equal(byId.integration_vercel.items[0].label, "shop");
   assert.equal(byId.integration_calcom.items[0].label, "Intro call");
+  assert.equal(byId.integration_whoop.headline, "Recovery 78 %");
+  assert.deepEqual(byId.integration_whoop.items, [{ label: "Sleep", detail: "88 %" }, { label: "Strain", detail: "11.4" }, { label: "HRV", detail: "61 ms" }]);
   assert.equal(byId.integration_homeassistant.headline, "1 notifications");
   assert.equal(byId.integration_homeassistant.reason, "Casa");
   assert.deepEqual(byId.integration_homeassistant.items, [

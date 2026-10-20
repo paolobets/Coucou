@@ -71,7 +71,8 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_github", 7, 300, poll_github);
     spawn_github_loops(app.clone());
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
-    spawn(app, "integration_notion", 9, 300, poll_notion);
+    spawn(app.clone(), "integration_notion", 9, 300, poll_notion);
+    spawn(app, crate::whoop::PILL, 12, 900, crate::whoop::poll);
 }
 
 /// True when the user has this integration switched on in settings.
@@ -120,6 +121,7 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
+        "integration_whoop" => crate::whoop::poll(app).await,
         _ => {}
     }
 }
@@ -132,7 +134,7 @@ static SEEN: std::sync::LazyLock<Seen> =
 
 /// Returns true the first time a given id is seen (and false on the very first
 /// load, which only fills the card).
-fn is_new(key: &'static str, id: &str) -> bool {
+pub(crate) fn is_new(key: &'static str, id: &str) -> bool {
     let mut map = SEEN.0.lock().unwrap();
     match map.insert(key, id.to_string()) {
         Some(previous) => previous != id,

@@ -56,6 +56,7 @@ const OPEN_URLS: Record<string, string> = {
   integration_stripe: "https://dashboard.stripe.com/payments",
   integration_notion: "https://notion.so",
   integration_calcom: "https://app.cal.com/bookings",
+  integration_whoop: "https://app.whoop.com",
 };
 
 /** IntegrationCardView.statusLabel on macOS. */
@@ -125,6 +126,19 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         onclick: () => void Bridge.openHomeAssistant(1),
       }),
     );
+  } else if (task.id === "integration_whoop" && configured) {
+    const connect = h("button", { class: "link-btn", style: `color:${task.color}d9`, text: t("Connect Whoop") });
+    connect.addEventListener("click", async () => {
+      connect.setAttribute("disabled", "");
+      connect.textContent = t("Waiting for Whoop in the browser…");
+      try {
+        await Bridge.whoopConnect();
+      } catch (err) {
+        connect.textContent = String(err);
+        connect.removeAttribute("disabled");
+      }
+    });
+    actions.append(connect);
   } else if (OPEN_URLS[task.id]) {
     actions.append(
       h("button", {
@@ -473,6 +487,55 @@ function homeassistantCard(): HTMLElement {
   return h("div", { class: "int-card" }, header(HA_BLUE, name, t("Home"), extra), rows);
 }
 
+// ── Whoop ─────────────────────────────────────────────────────────────────────
+
+const WHOOP_GREEN = "#44D7B6";
+
+/** Whoop's own colours for a recovery: green from 67, yellow from 34, red below. */
+function recoveryColor(score: number): string {
+  return score >= 67 ? "#22C55E" : score >= 34 ? "#F5A524" : "#F4505E";
+}
+
+function whoopCard(): HTMLElement {
+  const d = get("integration_whoop");
+  const recovery = (d.recovery ?? null) as Record<string, unknown> | null;
+  const sleep = (d.sleep ?? null) as Record<string, unknown> | null;
+  const workout = (d.workout ?? null) as Record<string, unknown> | null;
+  const strain = typeof d.strain === "number" ? d.strain : null;
+  const rows = h("div", { class: "int-rows tight" });
+  const row = (accent: string, label: string, value: string, ago?: unknown) => {
+    const r = listRow(accent, false,
+      h("span", { class: "int-name", text: label }),
+      h("span", { class: "int-time", style: `color:${accent}`, text: value }),
+    );
+    if (ago) r.append(h("span", { class: "int-ago", text: timeAgo(ago) }));
+    rows.append(r);
+  };
+  let headline: HTMLElement;
+  if (recovery && typeof recovery.score === "number") {
+    const score = Math.round(recovery.score);
+    const color = recoveryColor(score);
+    headline = h("div", { class: "int-balance" }, h("span", { style: `color:${color}`, text: String(score) }), h("i", { text: "%" }));
+    const hrv = typeof recovery.hrv === "number" ? `${Math.round(recovery.hrv)} ms` : "";
+    const rhr = typeof recovery.rhr === "number" ? `${Math.round(recovery.rhr)} bpm` : "";
+    if (hrv || rhr) row(color, `${t("HRV")} · ${t("Resting heart rate")}`, [hrv, rhr].filter(Boolean).join(" · "), recovery.at);
+  } else {
+    headline = h("div", { class: "int-status", text: t("Nothing scored yet") });
+  }
+  if (sleep) {
+    const perf = typeof sleep.performance === "number" ? `${Math.round(sleep.performance)} %` : "";
+    const hours = typeof sleep.hours === "number" ? t("{n} h", { n: sleep.hours }) : "";
+    row("#7C5CFF", t("Sleep"), [perf, hours].filter(Boolean).join(" · "), sleep.end);
+  }
+  if (strain != null) row("#F5A524", t("Strain"), strain.toFixed(1));
+  if (workout) {
+    const sport = typeof workout.sport === "string" && workout.sport ? workout.sport : t("Last workout");
+    const ws = typeof workout.strain === "number" ? workout.strain.toFixed(1) : "";
+    row(WHOOP_GREEN, sport, ws, workout.end);
+  }
+  return h("div", { class: "int-card" }, header(WHOOP_GREEN, "Whoop", t("Recovery")), headline, rows);
+}
+
 // ── n8n ───────────────────────────────────────────────────────────────────────
 
 function n8nCard(task: AgentTask, onDetail: () => void, openSettings: () => void): HTMLElement {
@@ -558,6 +621,8 @@ export function hasIntegrationData(id: string): boolean {
       return info.loaded;
     case "integration_homeassistant":
       return info.loaded;
+    case "integration_whoop":
+      return info.loaded;
     default:
       return false;
   }
@@ -599,6 +664,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return calcomCard();
     case "integration_homeassistant":
       return homeassistantCard();
+    case "integration_whoop":
+      return whoopCard();
     default:
       return idleCard(task, hooks.openSettings);
   }

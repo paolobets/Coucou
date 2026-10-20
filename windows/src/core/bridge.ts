@@ -358,6 +358,10 @@ export const Bridge = {
   openN8n: () => call<void>("open_n8n"),
   /** Opens one configured Home Assistant instance (1 to 4) in the browser. */
   openHomeAssistant: (slot: number) => call<void>("open_homeassistant", { slot }),
+  /** Whoop: the sign-in in the browser; resolves once Coucou holds the tokens. */
+  whoopConnect: () => callOrThrow<void>("whoop_connect"),
+  whoopDisconnect: () => call<void>("whoop_disconnect"),
+  whoopConnected: () => call<boolean>("whoop_connected"),
   /** The ✕ on a persistent notification in the Home Assistant card. */
   homeAssistantDismiss: (slot: number, id: string) =>
     callOrThrow<void>("homeassistant_dismiss_notification", { slot, id }),

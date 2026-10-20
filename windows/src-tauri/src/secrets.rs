@@ -20,6 +20,10 @@ pub const KNOWN_KEYS: &[&str] = &[
     "resend-api-key",
     "notion-api-key",
     "calcom-api-key",
+    // Whoop: the user's own app at developer.whoop.com (whoop.rs); the
+    // tokens of the sign-in are Rust-only entries below.
+    "whoop-client-id",
+    "whoop-client-secret",
     // « OK Coucou »'s answers in an ElevenLabs voice.
     "elevenlabs-api-key",
 ];
@@ -74,6 +78,10 @@ pub const INTERNAL_KEYS: &[&str] = &[
     "phone-relay-room",
     "phone-relay-key",
     "phone-relay-access",
+    // Whoop's OAuth tokens (whoop.rs): the sign-in, never shown to a webview.
+    "whoop-access-token",
+    "whoop-refresh-token",
+    "whoop-expires-at",
 ];
 
 /// Whether the keystore would accept this key through `get_internal` / `set_internal`.

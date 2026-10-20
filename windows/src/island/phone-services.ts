@@ -139,6 +139,23 @@ const BUILDERS: Record<string, Builder> = {
       items: items.slice(0, 3),
     };
   },
+  integration_whoop: () => {
+    // The day's figures only: recovery, sleep, strain. Nothing else is in the data.
+    const d = (State.integrations.integration_whoop?.data ?? {}) as Record<string, unknown>;
+    const recovery = (d.recovery ?? null) as Record<string, unknown> | null;
+    const sleep = (d.sleep ?? null) as Record<string, unknown> | null;
+    const score = recovery && typeof recovery.score === "number" ? Math.round(recovery.score) : null;
+    const items: { label: string; detail: string }[] = [];
+    if (sleep && typeof sleep.performance === "number") items.push({ label: t("Sleep"), detail: `${Math.round(sleep.performance)} %` });
+    if (typeof d.strain === "number") items.push({ label: t("Strain"), detail: d.strain.toFixed(1) });
+    if (recovery && typeof recovery.hrv === "number") items.push({ label: t("HRV"), detail: `${Math.round(recovery.hrv)} ms` });
+    return {
+      id: "integration_whoop", title: "Whoop",
+      headline: score == null ? t("Nothing scored yet") : t("Recovery {n} %", { n: score }),
+      reason: t("Recovery"),
+      items: items.slice(0, 3),
+    };
+  },
   integration_n8n: () => {
     const task = State.tasks.find((x) => x.id === "integration_n8n");
     if (!task || (task.state !== "finished" && task.state !== "error")) return null;

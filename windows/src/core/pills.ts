@@ -132,6 +132,11 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // polls its REST API with a long-lived token).
   { id: "integration_homeassistant", name: "Home Assistant", color: "#41BDF5", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("homeassistant-token") },
+  // Whoop, Windows and Linux first (src-tauri/src/whoop.rs): the user's own
+  // app at developer.whoop.com, a sign-in in the browser, then recovery, sleep
+  // and strain.
+  { id: "integration_whoop", name: "Whoop", color: "#44D7B6", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("whoop-client-id") },
   { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
   // Spotify through MPRIS on Linux and the system media controls on Windows

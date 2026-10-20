@@ -524,6 +524,13 @@ own window.
   against the SHA-256 GitHub publishes for it, and the installer (not Coucou)
   replaces the app and starts it again.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- A **Whoop** pill, not on the Mac yet: Settings → Integrations takes the
+  Client ID and Client Secret of an app of your own at developer.whoop.com
+  (redirect URL `http://localhost:47431/whoop`), then **Connect Whoop** opens
+  the browser to sign in; the tokens stay in the Credential Manager. Every 15
+  minutes the card reads the latest recovery (score, HRV, resting heart
+  rate), sleep (performance and hours), today's strain and the last workout,
+  and Mochi badges the pill when a new recovery is scored.
 - A **Home Assistant** pill, not on the Mac yet: Settings → Integrations takes
   the instance address and a long-lived access token, for up to four houses.
   Each one keeps a WebSocket open to Home Assistant, so the card follows the

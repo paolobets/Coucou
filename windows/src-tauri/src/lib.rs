@@ -37,6 +37,7 @@ mod spotify;
 mod tray;
 mod update;
 mod voice;
+mod whoop;
 #[cfg(windows)]
 mod webview_drop;
 
@@ -584,6 +585,25 @@ fn open_homeassistant(slot: usize) {
     homeassistant::open(slot);
 }
 
+/// Settings → Integrations → Whoop → Connect: the sign-in in the browser.
+/// Returns once Coucou holds the tokens, or says why not.
+#[tauri::command]
+async fn whoop_connect(app: AppHandle) -> Result<(), String> {
+    whoop::connect(app).await
+}
+
+/// Forgets the Whoop sign-in; the client id and secret stay.
+#[tauri::command]
+fn whoop_disconnect() {
+    whoop::disconnect();
+}
+
+/// Whether Coucou holds Whoop tokens (the webview may not read them).
+#[tauri::command]
+fn whoop_connected() -> bool {
+    whoop::connected()
+}
+
 /// The ✕ on a notification in the Home Assistant card.
 #[tauri::command]
 async fn homeassistant_dismiss_notification(slot: usize, id: String) -> Result<(), String> {
@@ -819,6 +839,9 @@ pub fn run() {
             open_n8n,
             open_homeassistant,
             homeassistant_dismiss_notification,
+            whoop_connect,
+            whoop_disconnect,
+            whoop_connected,
             open_settings_window,
             set_paused,
             shortcuts_status,
