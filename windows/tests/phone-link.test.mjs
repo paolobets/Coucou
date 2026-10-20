@@ -388,11 +388,13 @@ test("service cards say what the pills say and never an address, a subject, a de
   service("integration_github", { totalStars: 1520, totalRepos: 12 });
   service("integration_vercel", { deployments: [{ projectName: "shop", state: "READY", createdAt: now - 600_000 }] });
   service("integration_calcom", { bookings: [{ title: "Intro call", start: new Date(now + 3_600_000).toISOString() }] });
-  service("integration_homeassistant", {
-    url: "http://192.168.1.31:8123", name: "Casa", alarms: [{ entityId: "alarm_control_panel.home", name: "Home", state: "disarmed" }],
+  service("integration_homeassistant", { instances: [{
+    slot: 1, url: "http://192.168.1.31:8123", name: "Casa", connected: true, error: null,
+    alarms: [{ entityId: "alarm_control_panel.home", name: "Home", state: "disarmed" }],
     updates: ["Core 2026.10"], problems: [], lightsOn: 2,
     watched: [{ entityId: "sensor.power", name: "Power", state: "412", unit: "W", domain: "sensor", action: null }],
-  });
+    notifications: [{ id: "backup", title: "Backup done", message: "Saved to https://nas.example.com/backup", createdAt: null }],
+  }] });
   const cards = serviceCards(now);
   const byId = Object.fromEntries(cards.map((c) => [c.id, c]));
   assert.equal(byId.integration_stripe.headline, "12.50 EUR");
@@ -404,9 +406,12 @@ test("service cards say what the pills say and never an address, a subject, a de
   assert.equal(byId.integration_github.headline, "1.5k Total stars");
   assert.equal(byId.integration_vercel.items[0].label, "shop");
   assert.equal(byId.integration_calcom.items[0].label, "Intro call");
-  assert.equal(byId.integration_homeassistant.headline, "1 updates available");
+  assert.equal(byId.integration_homeassistant.headline, "1 notifications");
   assert.equal(byId.integration_homeassistant.reason, "Casa");
-  assert.deepEqual(byId.integration_homeassistant.items, [{ label: "Power", detail: "412 W" }]);
+  assert.deepEqual(byId.integration_homeassistant.items, [
+    { label: "Backup done", detail: "" },
+    { label: "Power", detail: "412 W" },
+  ]);
   const all = JSON.stringify(cards);
   for (const secret of ["alice", "secret", "Alice", "invoice", "https://", "example.com", "192.168", "8123"]) assert.ok(!all.includes(secret), `${secret} must not be in a card`);
   for (const id of Object.keys(State.integrations)) delete State.integrations[id];

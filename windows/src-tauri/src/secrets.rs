@@ -20,18 +20,15 @@ pub const KNOWN_KEYS: &[&str] = &[
     "resend-api-key",
     "notion-api-key",
     "calcom-api-key",
-    // Home Assistant: the instance address, a long-lived access token, and the
-    // entity ids the card watches (a list, not a secret, kept with the others
-    // so nothing of the integration lands on disk).
-    "homeassistant-url",
-    "homeassistant-token",
-    "homeassistant-entities",
     // « OK Coucou »'s answers in an ElevenLabs voice.
     "elevenlabs-api-key",
 ];
 
 fn entry(key: &str) -> Option<Entry> {
-    if !KNOWN_KEYS.contains(&key) {
+    // Home Assistant's keys (an address, a token and an entity list per
+    // instance, homeassistant.rs) are kept here too, so nothing of the
+    // integration lands on disk.
+    if !KNOWN_KEYS.contains(&key) && !crate::homeassistant::known_keys().iter().any(|k| k == key) {
         return None;
     }
     Entry::new(SERVICE, key).ok()

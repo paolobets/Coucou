@@ -525,12 +525,15 @@ own window.
   replaces the app and starts it again.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
 - A **Home Assistant** pill, not on the Mac yet: Settings → Integrations takes
-  the instance address, a long-lived access token and the entities to watch.
-  Every minute Coucou reads `/api/states` and shows the alarm panels, the
-  updates waiting, the "problem" sensors that are on, how many lights are on
-  and the watched entities with their state; lights, switches, fans and
-  input booleans get a toggle, scenes a button. Mochi badges the pill when an
-  alarm goes off or a new update appears. The ↗ button opens Home Assistant.
+  the instance address, a long-lived access token and the entities to watch,
+  for up to four houses. Each one keeps a WebSocket open to Home Assistant,
+  so the card follows the state changes as they happen and shows the
+  persistent notifications (with a Dismiss), the alarm panels, the updates
+  waiting, the "problem" sensors that are on, how many lights are on and the
+  watched entities with their state; lights, switches, fans and input
+  booleans get a toggle, scenes a button. Mochi badges the pill when an alarm
+  goes off, a notification arrives or a new update appears. The ↗ button
+  opens Home Assistant.
 - The Cursor pill carries both Cursor Agent's own hooks and Claude Code running
   in Cursor's terminal.
 - Hermes: Coucou writes the plugin but does not run the `hermes` CLI, so it is

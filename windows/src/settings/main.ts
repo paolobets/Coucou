@@ -765,6 +765,20 @@ interface IntegrationDef {
   hint?: string;
 }
 
+/** Home Assistant instances (homeassistant.rs): the first keeps the keys the pill shipped with. */
+const HA_SLOTS = 4;
+function haKey(slot: number, what: "url" | "token" | "entities"): string {
+  return slot <= 1 ? `homeassistant-${what}` : `homeassistant-${slot}-${what}`;
+}
+function haFields(slot: number): IntegrationDef["fields"] {
+  return [
+    { key: haKey(slot, "url"), label: N_("Instance URL"), placeholder: "http://homeassistant.local:8123", secret: false },
+    { key: haKey(slot, "token"), label: N_("Access token"), placeholder: "eyJ…", secret: true },
+    { key: haKey(slot, "entities"), label: N_("Entities"), placeholder: "light.kitchen, sensor.power, scene.movie", secret: false },
+  ];
+}
+const HA_KEYS: string[] = Array.from({ length: HA_SLOTS }, (_, i) => haFields(i + 1).map((f) => f.key)).flat();
+
 const INTEGRATIONS: IntegrationDef[] = [
   { id: "integration_stripe", name: "Stripe", color: "#0570DE",
     fields: [{ key: "stripe-api-key", label: N_("Secret key"), placeholder: "sk_live_…", secret: true }] },
@@ -785,12 +799,8 @@ const INTEGRATIONS: IntegrationDef[] = [
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   { id: "integration_homeassistant", name: "Home Assistant", color: "#41BDF5",
-    fields: [
-      { key: "homeassistant-url", label: N_("Instance URL"), placeholder: "http://homeassistant.local:8123", secret: false },
-      { key: "homeassistant-token", label: N_("Access token"), placeholder: "eyJ…", secret: true },
-      { key: "homeassistant-entities", label: N_("Entities"), placeholder: "light.kitchen, sensor.power, scene.movie", secret: false },
-    ],
-    hint: N_("A long-lived access token from your Home Assistant profile → Security. The entities listed show on the card with their state; lights, switches and fans get a toggle, scenes a button. Alarm panels, updates and problem sensors are always shown.") },
+    fields: haFields(1),
+    hint: N_("A long-lived access token from your Home Assistant profile → Security. The entities listed show on the card with their state; lights, switches and fans get a toggle, scenes a button. Alarm panels, updates, problem sensors and persistent notifications are always shown.") },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
 ];
@@ -832,7 +842,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     });
 
     const rows = h("div", { style: "display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-width:0" });
-    for (const field of def.fields) {
+    const fieldRow = (field: IntegrationDef["fields"][number]): HTMLElement => {
       const input = h("input", {
         type: field.secret ? "password" : "text",
         placeholder: present[field.key] ? CHAT_STRINGS.stored : field.placeholder,
@@ -854,15 +864,37 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
           dotEl.style.background = "#f5a524";
         }
       });
-      rows.append(
-        h("div", { class: "row" },
-          h("label", { style: "min-width:104px", text: t(field.label) }),
-          input, saveBtn, dotEl,
-        ),
+      return h("div", { class: "row" },
+        h("label", { style: "min-width:104px", text: t(field.label) }),
+        input, saveBtn, dotEl,
       );
-    }
+    };
+    for (const field of def.fields) rows.append(fieldRow(field));
 
     if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
+    if (def.id === "integration_homeassistant") {
+      // Up to four houses: a slot's fields show once it has an address, or
+      // after a click on the button, one slot at a time.
+      const blocks: HTMLElement[] = [];
+      const more = h("button", { text: t("Add another Home Assistant") });
+      for (let slot = 2; slot <= HA_SLOTS; slot++) {
+        const block = h("div", { style: "display:flex;flex-direction:column;gap:6px;padding-top:6px" },
+          h("div", { class: "hint", text: t("Instance {n}", { n: slot }) }),
+          ...haFields(slot).map(fieldRow),
+        );
+        block.hidden = !present[haKey(slot, "url")];
+        blocks.push(block);
+        rows.append(block);
+      }
+      const refresh = () => { more.hidden = blocks.every((b) => !b.hidden); };
+      more.addEventListener("click", () => {
+        const next = blocks.find((b) => b.hidden);
+        if (next) next.hidden = false;
+        refresh();
+      });
+      refresh();
+      rows.append(h("div", { class: "row" }, more));
+    }
     if (def.id === "integration_spotify") {
       // As on the Mac's row: said only when there is no Spotify to launch.
       const hint = h("div", { class: "hint", style: "padding-top:5px" });
@@ -1340,7 +1372,7 @@ async function render() {
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
-    "homeassistant-url", "homeassistant-token", "homeassistant-entities",
+    ...HA_KEYS,
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;

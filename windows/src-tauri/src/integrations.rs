@@ -43,11 +43,11 @@ pub struct IntegrationEvent {
     pub detail: Option<String>,
 }
 
-fn emit(app: &AppHandle, update: IntegrationUpdate) {
+pub(crate) fn emit(app: &AppHandle, update: IntegrationUpdate) {
     let _ = app.emit_to(WINDOW_LABEL, "integration", update);
 }
 
-fn client() -> reqwest::Client {
+pub(crate) fn client() -> reqwest::Client {
     reqwest::Client::builder()
         .timeout(TIMEOUT)
         .build()
@@ -71,12 +71,11 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_github", 7, 300, poll_github);
     spawn_github_loops(app.clone());
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
-    spawn(app.clone(), "integration_notion", 9, 300, poll_notion);
-    spawn(app, "integration_homeassistant", 10, 60, poll_homeassistant);
+    spawn(app, "integration_notion", 9, 300, poll_notion);
 }
 
 /// True when the user has this integration switched on in settings.
-fn enabled(app: &AppHandle, id: &str) -> bool {
+pub(crate) fn enabled(app: &AppHandle, id: &str) -> bool {
     app.try_state::<crate::Shared>()
         .map(|shared| {
             let settings = shared.settings.lock().unwrap();
@@ -121,7 +120,6 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
-        "integration_homeassistant" => poll_homeassistant(app).await,
         _ => {}
     }
 }
@@ -142,16 +140,9 @@ fn is_new(key: &'static str, id: &str) -> bool {
     }
 }
 
-/// Remembers `value` under `key` and returns what was there before: `None` on
-/// the first poll, so a change can be told from a first load.
-fn previous(key: &'static str, value: &str) -> Option<String> {
-    let mut map = SEEN.0.lock().unwrap();
-    map.insert(key, value.to_string())
-}
-
 /// The card's error line, in the interface language (i18n.rs);
 /// `unauthorised_hint` comes translated.
-fn status_error(code: u16, unauthorised_hint: &str) -> String {
+pub(crate) fn status_error(code: u16, unauthorised_hint: &str) -> String {
     match code {
         401 => crate::i18n::t("Invalid API key (401)"),
         403 => unauthorised_hint.to_string(),
@@ -853,222 +844,6 @@ async fn poll_calcom(app: AppHandle) {
         error: None,
         event: None,
     });
-}
-
-// ── Home Assistant ────────────────────────────────────────────────────────────
-//
-// One request to `/api/states` every minute with the long-lived token, plus
-// `/api/config` for the house's name. The card gets the alarm panels, the
-// updates waiting, the "problem" sensors that are on, how many lights are on,
-// and the entities the user listed in Settings. Persistent notifications are
-// not entities any more (they only come over the WebSocket), so they are not
-// here. Nothing is written to Home Assistant from the poller: the only writes
-// are `call_service`, from a click on the card, on a short list of services.
-
-/// `(domain, service)` pairs the card may call, each on an entity of its own
-/// domain. Toggles and scenes only: nothing that arms, unlocks or opens.
-const HA_SERVICES: [(&str, &str); 5] = [
-    ("light", "toggle"),
-    ("switch", "toggle"),
-    ("input_boolean", "toggle"),
-    ("fan", "toggle"),
-    ("scene", "turn_on"),
-];
-
-/// The address as stored, without a trailing slash, only if it is http(s).
-fn homeassistant_base() -> Option<String> {
-    let raw = secrets::get("homeassistant-url")?;
-    let base = raw.trim().trim_end_matches('/').to_string();
-    (base.starts_with("http://") || base.starts_with("https://")).then_some(base)
-}
-
-/// An entity id as Home Assistant spells them: `domain.object_id`, lowercase
-/// letters, digits and underscores. Anything else is refused before it reaches
-/// a URL or a request body.
-fn valid_entity_id(id: &str) -> bool {
-    let Some((domain, object)) = id.split_once('.') else { return false };
-    let ok = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_');
-    ok(domain) && ok(object)
-}
-
-/// The entity ids listed in Settings, one per line or comma, invalid ones dropped.
-fn watched_entities() -> Vec<String> {
-    secrets::get("homeassistant-entities")
-        .unwrap_or_default()
-        .split(|c: char| c == ',' || c == '\n' || c == ';' || c.is_whitespace())
-        .map(|s| s.trim().to_string())
-        .filter(|s| valid_entity_id(s))
-        .take(12)
-        .collect()
-}
-
-fn ha_attr<'a>(entity: &'a Value, name: &str) -> Option<&'a Value> {
-    entity.get("attributes").and_then(|a| a.get(name))
-}
-
-fn ha_name(entity: &Value) -> String {
-    ha_attr(entity, "friendly_name")
-        .and_then(Value::as_str)
-        .map(str::to_string)
-        .or_else(|| entity.get("entity_id").and_then(Value::as_str).map(str::to_string))
-        .unwrap_or_default()
-}
-
-async fn poll_homeassistant(app: AppHandle) {
-    let (Some(base), Some(token)) = (homeassistant_base(), secrets::get("homeassistant-token")) else {
-        return;
-    };
-    let http = client();
-    let auth = format!("Bearer {token}");
-
-    let response = http.get(format!("{base}/api/states")).header("Authorization", &auth).send().await;
-    let response = match response {
-        Ok(r) if r.status().is_success() => r,
-        Ok(r) => {
-            emit(&app, IntegrationUpdate {
-                id: "integration_homeassistant",
-                data: json!({ "url": base }),
-                error: Some(status_error(r.status().as_u16(), &crate::i18n::t("Token lacks access"))),
-                event: None,
-            });
-            return;
-        }
-        Err(e) => {
-            emit(&app, IntegrationUpdate {
-                id: "integration_homeassistant",
-                data: json!({ "url": base }),
-                error: Some(crate::i18n::tf("No connection: {error}", &[("error", &e.to_string())])),
-                event: None,
-            });
-            return;
-        }
-    };
-    let states: Vec<Value> = response.json::<Value>().await.ok().and_then(|v| v.as_array().cloned()).unwrap_or_default();
-
-    // The house's name and version: nice to have, never a reason to fail.
-    let config: Value = match http.get(format!("{base}/api/config")).header("Authorization", &auth).send().await {
-        Ok(r) if r.status().is_success() => r.json().await.unwrap_or(json!({})),
-        _ => json!({}),
-    };
-
-    let watched = watched_entities();
-    let mut alarms: Vec<Value> = Vec::new();
-    let mut updates: Vec<String> = Vec::new();
-    let mut problems: Vec<String> = Vec::new();
-    let mut lights_on = 0u32;
-    let mut watched_rows: Vec<Value> = Vec::new();
-    for entity in &states {
-        let Some(id) = entity.get("entity_id").and_then(Value::as_str) else { continue };
-        let state = entity.get("state").and_then(Value::as_str).unwrap_or("");
-        let domain = id.split('.').next().unwrap_or("");
-        match domain {
-            "alarm_control_panel" => alarms.push(json!({ "entityId": id, "name": ha_name(entity), "state": state })),
-            "update" if state == "on" => {
-                let title = ha_attr(entity, "title").and_then(Value::as_str).map(str::to_string);
-                updates.push(title.unwrap_or_else(|| ha_name(entity)));
-            }
-            "binary_sensor" if state == "on" && ha_attr(entity, "device_class").and_then(Value::as_str) == Some("problem") => {
-                problems.push(ha_name(entity));
-            }
-            "light" if state == "on" => lights_on += 1,
-            _ => {}
-        }
-        if watched.iter().any(|w| w == id) {
-            watched_rows.push(json!({
-                "entityId": id,
-                "name": ha_name(entity),
-                "state": state,
-                "unit": ha_attr(entity, "unit_of_measurement").and_then(Value::as_str),
-                "domain": domain,
-                // The card shows a button only for a service the list above allows.
-                "action": HA_SERVICES.iter().find(|(d, _)| *d == domain).map(|(_, s)| *s),
-            }));
-        }
-    }
-    // Settings order, not Home Assistant's.
-    watched_rows.sort_by_key(|row| {
-        watched.iter().position(|w| Some(w.as_str()) == row.get("entityId").and_then(Value::as_str)).unwrap_or(usize::MAX)
-    });
-    updates.sort();
-
-    // Two things worth a sound: an alarm that just went off, and an update
-    // that was not waiting before. A first poll fills the card quietly.
-    let triggered: Vec<String> = alarms
-        .iter()
-        .filter(|a| a.get("state").and_then(Value::as_str) == Some("triggered"))
-        .filter_map(|a| a.get("name").and_then(Value::as_str).map(str::to_string))
-        .collect();
-    let mut event = None;
-    if let Some(before) = previous("ha-alarm", &triggered.join("\n")) {
-        if !triggered.is_empty() && before.is_empty() {
-            event = Some(IntegrationEvent {
-                success: false,
-                label: crate::i18n::t("Alarm triggered"),
-                detail: Some(triggered.join(", ")),
-            });
-        }
-    }
-    if let Some(before) = previous("ha-updates", &updates.join("\n")) {
-        let fresh: Vec<&String> = updates.iter().filter(|u| !before.lines().any(|b| b == u.as_str())).collect();
-        if event.is_none() && !fresh.is_empty() {
-            event = Some(IntegrationEvent {
-                success: true,
-                label: crate::i18n::t("Update available"),
-                detail: Some(fresh.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ")),
-            });
-        }
-    }
-
-    emit(&app, IntegrationUpdate {
-        id: "integration_homeassistant",
-        data: json!({
-            "url": base,
-            "name": config.get("location_name").and_then(Value::as_str),
-            "version": config.get("version").and_then(Value::as_str),
-            "alarms": alarms,
-            "updates": updates,
-            "problems": problems,
-            "lightsOn": lights_on,
-            "watched": watched_rows,
-        }),
-        error: None,
-        event,
-    });
-}
-
-/// A click on the card: `domain.service` on one entity of that domain, from
-/// the short list in `HA_SERVICES`. The card is refreshed right after, so it
-/// shows what Home Assistant says happened, not what was asked.
-pub async fn homeassistant_call_service(app: AppHandle, domain: String, service: String, entity_id: String) -> Result<(), String> {
-    if !HA_SERVICES.iter().any(|(d, s)| *d == domain && *s == service) {
-        return Err(format!("{domain}.{service} is not a service the card may call"));
-    }
-    if !valid_entity_id(&entity_id) || !entity_id.starts_with(&format!("{domain}.")) {
-        return Err(format!("{entity_id} is not an entity of {domain}"));
-    }
-    let (Some(base), Some(token)) = (homeassistant_base(), secrets::get("homeassistant-token")) else {
-        return Err(crate::i18n::t("Key not configured"));
-    };
-    let response = client()
-        .post(format!("{base}/api/services/{domain}/{service}"))
-        .header("Authorization", format!("Bearer {token}"))
-        .json(&json!({ "entity_id": entity_id }))
-        .send()
-        .await
-        .map_err(|e| crate::i18n::tf("No connection: {error}", &[("error", &e.to_string())]))?;
-    if !response.status().is_success() {
-        return Err(status_error(response.status().as_u16(), &crate::i18n::t("Token lacks access")));
-    }
-    poll_homeassistant(app).await;
-    Ok(())
-}
-
-/// Opens the configured Home Assistant in the browser — the address lives in
-/// the Credential Manager, so the island cannot read it itself.
-pub fn open_homeassistant() {
-    if let Some(base) = homeassistant_base() {
-        crate::platform::open_url(&base);
-    }
 }
 
 // ── n8n ───────────────────────────────────────────────────────────────────────

@@ -104,28 +104,39 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
   integration_homeassistant: () => {
-    // The house's name, what waits (alarm, updates, problems), and the watched
-    // entities with their state. Never the address.
-    const d = (State.integrations.integration_homeassistant?.data ?? {}) as Record<string, unknown>;
-    const alarms = list("integration_homeassistant", "alarms");
-    const updates = Array.isArray(d.updates) ? (d.updates as unknown[]).length : 0;
-    const problems = Array.isArray(d.problems) ? (d.problems as unknown[]).length : 0;
-    const triggered = alarms.some((a) => a.state === "triggered");
+    // What waits across the houses (notifications, alarm, updates, problems)
+    // and the first notifications and watched entities. Never an address.
+    const instances = list("integration_homeassistant", "instances");
+    const sum = (key: string) => instances.reduce((n, i) => n + (Array.isArray(i[key]) ? (i[key] as unknown[]).length : 0), 0);
+    const triggered = instances.some((i) => Array.isArray(i.alarms) && (i.alarms as Record<string, unknown>[]).some((a) => a.state === "triggered"));
+    const notifications = sum("notifications");
+    const updates = sum("updates");
+    const problems = sum("problems");
     const headline = triggered
       ? t("Alarm triggered")
-      : updates > 0
-        ? t("{n} updates available", { n: updates })
-        : problems > 0
-          ? t("{n} problems", { n: problems })
-          : t("All quiet");
+      : notifications > 0
+        ? t("{n} notifications", { n: notifications })
+        : updates > 0
+          ? t("{n} updates available", { n: updates })
+          : problems > 0
+            ? t("{n} problems", { n: problems })
+            : t("All quiet");
+    const first = instances[0] ?? {};
+    const items: { label: string; detail: string }[] = [];
+    for (const inst of instances) {
+      const notes = Array.isArray(inst.notifications) ? (inst.notifications as Record<string, unknown>[]) : [];
+      // The title only: a message can carry a link, an address or a name.
+      for (const n of notes) items.push({ label: String(n.title ?? t("Notification")), detail: "" });
+      const watched = Array.isArray(inst.watched) ? (inst.watched as Record<string, unknown>[]) : [];
+      for (const w of watched) {
+        items.push({ label: String(w.name ?? w.entityId ?? ""), detail: `${String(w.state ?? "")}${w.unit ? ` ${String(w.unit)}` : ""}` });
+      }
+    }
     return {
       id: "integration_homeassistant", title: "Home Assistant",
       headline,
-      reason: typeof d.name === "string" && d.name ? d.name : t("Home"),
-      items: list("integration_homeassistant", "watched").slice(0, 3).map((w) => ({
-        label: String(w.name ?? w.entityId ?? ""),
-        detail: `${String(w.state ?? "")}${w.unit ? ` ${String(w.unit)}` : ""}`,
-      })),
+      reason: instances.length > 1 ? t("{n} houses", { n: instances.length }) : typeof first.name === "string" && first.name ? first.name : t("Home"),
+      items: items.slice(0, 3),
     };
   },
   integration_n8n: () => {

@@ -10,6 +10,7 @@ mod desktop;
 mod files;
 mod flow;
 mod github;
+mod homeassistant;
 mod hooks;
 mod i18n;
 mod identity;
@@ -541,6 +542,9 @@ fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> 
     }
     let before = (key == "github-token").then(|| secrets::get(&key));
     secrets::set(&key, &value)?;
+    if key.starts_with("homeassistant-") {
+        homeassistant::config_changed();
+    }
     if key == claude::KEY {
         voice::sync(&app);
     }
@@ -573,17 +577,23 @@ fn open_n8n() {
     }
 }
 
-/// Opens the configured Home Assistant — its address lives in the Credential Manager.
+/// Opens one configured Home Assistant — its address lives in the Credential Manager.
 #[tauri::command]
-fn open_homeassistant() {
-    integrations::open_homeassistant();
+fn open_homeassistant(slot: usize) {
+    homeassistant::open(slot);
 }
 
-/// A toggle or a scene from the Home Assistant card; integrations.rs keeps the
+/// A toggle or a scene from the Home Assistant card; homeassistant.rs keeps the
 /// list of what may be called.
 #[tauri::command]
-async fn homeassistant_call_service(app: AppHandle, domain: String, service: String, entity_id: String) -> Result<(), String> {
-    integrations::homeassistant_call_service(app, domain, service, entity_id).await
+async fn homeassistant_call_service(slot: usize, domain: String, service: String, entity_id: String) -> Result<(), String> {
+    homeassistant::call_service(slot, domain, service, entity_id).await
+}
+
+/// The ✕ on a notification in the Home Assistant card.
+#[tauri::command]
+async fn homeassistant_dismiss_notification(slot: usize, id: String) -> Result<(), String> {
+    homeassistant::dismiss_notification(slot, id).await
 }
 
 /// Refresh buttons in the integration cards.
@@ -815,6 +825,7 @@ pub fn run() {
             open_n8n,
             open_homeassistant,
             homeassistant_call_service,
+            homeassistant_dismiss_notification,
             open_settings_window,
             set_paused,
             shortcuts_status,
@@ -954,6 +965,7 @@ pub fn run() {
             pipe::start(handle.clone());
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());
+            homeassistant::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);
             // New versions: nothing goes to GitHub until the user agrees (update.rs).

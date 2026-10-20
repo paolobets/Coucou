@@ -122,7 +122,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         class: "link-btn",
         style: `color:${task.color}d9`,
         text: t("Open {name}", { name: "Home Assistant" }),
-        onclick: () => void Bridge.openHomeAssistant(),
+        onclick: () => void Bridge.openHomeAssistant(1),
       }),
     );
   } else if (OPEN_URLS[task.id]) {
@@ -367,6 +367,10 @@ function calcomCard(): HTMLElement {
 }
 
 // ── Home Assistant ────────────────────────────────────────────────────────────
+//
+// One card, up to four instances (homeassistant.rs): each gets its own header
+// with the house's name, then its persistent notifications, what waits (alarm,
+// updates, problems) and the entities picked in Settings.
 
 const HA_BLUE = "#41BDF5";
 
@@ -394,41 +398,77 @@ function entityState(w: Record<string, unknown>): string {
   return w.unit ? `${state} ${String(w.unit)}` : state;
 }
 
-function homeassistantCard(): HTMLElement {
-  const id = "integration_homeassistant";
-  const d = get(id);
-  const alarms = arr(id, "alarms");
-  const updates = Array.isArray(d.updates) ? (d.updates as unknown[]).map(String) : [];
-  const problems = Array.isArray(d.problems) ? (d.problems as unknown[]).map(String) : [];
-  const lightsOn = typeof d.lightsOn === "number" ? d.lightsOn : 0;
-  const watched = arr(id, "watched");
-  const name = typeof d.name === "string" && d.name ? d.name : "Home Assistant";
+export function homeassistantInstances(): Record<string, unknown>[] {
+  return arr("integration_homeassistant", "instances");
+}
 
-  const rows = h("div", { class: "int-rows tight" });
+function homeassistantSection(inst: Record<string, unknown>, several: boolean): Node[] {
+  const slot = typeof inst.slot === "number" ? inst.slot : 1;
+  const list = (key: string) => (Array.isArray(inst[key]) ? (inst[key] as Record<string, unknown>[]) : []);
+  const strings = (key: string) => (Array.isArray(inst[key]) ? (inst[key] as unknown[]).map(String) : []);
+  const alarms = list("alarms");
+  const notifications = list("notifications");
+  const updates = strings("updates");
+  const problems = strings("problems");
+  const watched = list("watched");
+  const connected = inst.connected === true;
+  const name = typeof inst.name === "string" && inst.name ? inst.name : t("Instance {n}", { n: slot });
+  const out: Node[] = [];
+
+  if (several) {
+    // Each house gets a row of its own: its name, and a red dot with the reason when it is unreachable.
+    const accent = connected ? "#22C55E" : "#F4505E";
+    out.push(listRow(accent, true,
+      h("span", { class: "int-name", text: name }),
+      h("span", { class: "int-time", style: `color:${accent}`, text: connected ? "" : String(inst.error ?? t("Not connected")) }),
+    ));
+  } else if (!connected && inst.error) {
+    out.push(h("div", { class: "int-status", text: String(inst.error) }));
+  }
+
+  for (const n of notifications.slice(0, 4)) {
+    const id = String(n.id ?? "");
+    const title = typeof n.title === "string" && n.title ? n.title : t("Notification");
+    const message = typeof n.message === "string" ? n.message : "";
+    const row = listRow("#F5A524", false,
+      h("span", { class: "int-name", title: message, text: message ? `${title} · ${message}` : title }),
+    );
+    const dismiss = h("button", { class: "link-btn", style: "color:#F5A524d9;margin-left:auto", text: t("Dismiss") });
+    dismiss.addEventListener("click", async () => {
+      dismiss.setAttribute("disabled", "");
+      try {
+        await Bridge.homeAssistantDismiss(slot, id);
+      } catch (err) {
+        dismiss.textContent = String(err);
+      }
+    });
+    row.append(dismiss);
+    out.push(row);
+  }
   for (const a of alarms) {
     const triggered = a.state === "triggered";
     const accent = triggered ? "#F4505E" : a.state === "disarmed" ? "#6B7079" : "#22C55E";
-    rows.append(listRow(accent, triggered,
+    out.push(listRow(accent, triggered,
       h("span", { class: "int-name", text: String(a.name ?? "") }),
       h("span", { class: "int-time", style: `color:${accent}`, text: alarmLabel(String(a.state ?? "")) }),
     ));
   }
   if (updates.length > 0) {
-    rows.append(listRow("#F5A524", false,
+    out.push(listRow("#F5A524", false,
       h("span", { class: "int-name", text: t("{n} updates available", { n: updates.length }) }),
       h("span", { class: "int-time", style: "color:#F5A524", text: updates.slice(0, 2).join(", ") }),
     ));
   }
   if (problems.length > 0) {
-    rows.append(listRow("#F4505E", false,
+    out.push(listRow("#F4505E", false,
       h("span", { class: "int-name", text: t("{n} problems", { n: problems.length }) }),
       h("span", { class: "int-time", style: "color:#F4505E", text: problems.slice(0, 2).join(", ") }),
     ));
   }
-  if (alarms.length === 0 && updates.length === 0 && problems.length === 0) {
-    rows.append(listRow("#22C55E", false, h("span", { class: "int-name", text: t("All quiet") })));
+  if (connected && notifications.length === 0 && alarms.length === 0 && updates.length === 0 && problems.length === 0) {
+    out.push(listRow("#22C55E", false, h("span", { class: "int-name", text: t("All quiet") })));
   }
-  for (const w of watched.slice(0, 6)) {
+  for (const w of watched.slice(0, several ? 4 : 6)) {
     const entityId = String(w.entityId ?? "");
     const domain = String(w.domain ?? "");
     const action = typeof w.action === "string" ? w.action : null;
@@ -436,9 +476,10 @@ function homeassistantCard(): HTMLElement {
       h("span", { class: "int-name", text: String(w.name ?? entityId) }),
       h("span", { class: "int-time", style: `color:${HA_BLUE}`, text: entityState(w) }),
     );
-    if (action) {
-      // One click, one service call, then the card shows what Home Assistant
-      // reports back. Rust refuses anything outside its short list.
+    if (action && connected) {
+      // One click, one service call; the state that follows comes back on the
+      // socket, so the row shows what Home Assistant reports. Rust refuses
+      // anything outside its short list.
       const button = h("button", {
         class: "link-btn",
         style: `color:${HA_BLUE}d9;margin-left:auto`,
@@ -447,16 +488,26 @@ function homeassistantCard(): HTMLElement {
       button.addEventListener("click", async () => {
         button.setAttribute("disabled", "");
         try {
-          await Bridge.homeAssistantCallService(domain, action, entityId);
+          await Bridge.homeAssistantCallService(slot, domain, action, entityId);
         } catch (err) {
           button.textContent = String(err);
         }
       });
       row.append(button);
     }
-    rows.append(row);
+    out.push(row);
   }
+  return out;
+}
 
+function homeassistantCard(): HTMLElement {
+  const instances = homeassistantInstances();
+  const several = instances.length > 1;
+  const first = instances[0] ?? {};
+  const name = !several && typeof first.name === "string" && first.name ? first.name : "Home Assistant";
+  const lightsOn = instances.reduce((n, i) => n + (typeof i.lightsOn === "number" ? i.lightsOn : 0), 0);
+  const rows = h("div", { class: "int-rows tight" });
+  for (const inst of instances) rows.append(...homeassistantSection(inst, several));
   const extra = lightsOn > 0 ? h("span", { text: t("{n} lights on", { n: lightsOn }) }) : undefined;
   return h("div", { class: "int-card" }, header(HA_BLUE, name, t("Home"), extra), rows);
 }

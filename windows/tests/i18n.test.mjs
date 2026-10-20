@@ -398,6 +398,7 @@ const NOT_TEXT = new Set([
   "unknown", // a CI state
   "Resend", // the service's name (the Mac's "Resend" is a button: send again)
   "Stop", // Claude Code's hook event (the Mac's "Stop" is a button)
+  "Notification", // Claude Code's hook event (the Home Assistant card's "Notification" is a title)
 ]);
 
 test("no known user-facing English literal outside t() in the views and settings", () => {
