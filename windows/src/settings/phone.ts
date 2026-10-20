@@ -6,7 +6,7 @@ import { modelId, modelsOf, toggleModel, usableProviders } from "../core/phone-c
 import { PROVIDERS, type ProviderDef } from "../core/providers";
 import type { Settings } from "../core/state";
 import { h } from "../views/dom";
-import { t } from "../i18n/i18n";
+import { N_, t } from "../i18n/i18n";
 
 type Toggle = (on: boolean, onChange: (v: boolean) => void) => HTMLElement;
 
@@ -272,7 +272,7 @@ function answersBlock(makeToggle: Toggle): HTMLElement {
 const PHONE_SERVICES: [string, string][] = [
   ["integration_stripe", "Stripe"], ["integration_github", "GitHub"], ["integration_vercel", "Vercel"],
   ["integration_n8n", "n8n"], ["integration_resend", "Resend"], ["integration_notion", "Notion"], ["integration_calcom", "Cal.com"],
-  ["integration_homeassistant", "Home Assistant"], ["integration_whoop", "Whoop"],
+  ["integration_homeassistant", "Home Assistant"], ["integration_whoop", "Whoop"], ["integration_calendar", N_("Calendar")],
 ];
 
 /**
@@ -297,7 +297,7 @@ function servicesBlock(): HTMLElement {
         }
       })();
     });
-    return { id, box, row: h("div", { class: "row" }, h("label", {}, box, h("span", { text: ` ${name}` }))) };
+    return { id, box, row: h("div", { class: "row" }, h("label", {}, box, h("span", { text: ` ${t(name)}` }))) };
   });
   void Bridge.phoneServicesStatus().then((status) => {
     if (!status) return;

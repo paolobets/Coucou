@@ -137,6 +137,9 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // and strain.
   { id: "integration_whoop", name: "Whoop", color: "#44D7B6", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("whoop-client-id") },
+  // Calendars by their iCal links, Windows and Linux first (src-tauri/src/calendar.rs).
+  { id: "integration_calendar", name: "Calendar", color: "#FF7A59", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("calendar-url") },
   { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
   // Spotify through MPRIS on Linux and the system media controls on Windows

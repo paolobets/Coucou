@@ -420,7 +420,7 @@ function apiSection(hasKey: boolean): HTMLElement {
 function activePillsSection(connected: Record<string, boolean>): HTMLElement {
   const slots = h("div", { class: "hint" });
   const main = h("select", {}) as HTMLSelectElement;
-  for (const def of mainPillChoices()) main.append(h("option", { value: def.id, text: def.name }));
+  for (const def of mainPillChoices()) main.append(h("option", { value: def.id, text: t(def.name) }));
   main.addEventListener("change", () => {
     const next = chooseMainPill(settings, main.value);
     if (!next) return;
@@ -445,7 +445,7 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
     const full = !isMain && !on && settings.activeIntegrations.length >= MAX_ACTIVE;
     const el = h("div", { class: full ? "pill-row full" : "pill-row" },
       colorDot(def, "width:10px;height:10px", () => settings.pillColors, pickColor),
-      h("span", { class: "name", text: def.name }),
+      h("span", { class: "name", text: t(def.name) }),
     );
     if (isMain) {
       el.append(h("span", { class: "state", text: t("Main") }));
@@ -583,7 +583,7 @@ function chatProvidersSection(
       h("div", { class: "row" },
         h("label", {},
           h("i", { class: "dot", style: `background:${p.accent};margin-right:8px` }),
-          h("span", { text: def.name }),
+          h("span", { text: t(def.name) }),
         ),
         input, saveBtn, removeBtn, dotEl,
       ),
@@ -778,6 +778,14 @@ function haFields(slot: number): IntegrationDef["fields"] {
 }
 const HA_KEYS: string[] = Array.from({ length: HA_SLOTS }, (_, i) => haFields(i + 1).map((f) => f.key)).flat();
 
+/** Calendars by iCal link (calendar.rs): the link is the secret. */
+const CAL_SLOTS = 4;
+function calFields(slot: number): IntegrationDef["fields"] {
+  const key = slot <= 1 ? "calendar-url" : `calendar-${slot}-url`;
+  return [{ key, label: N_("iCal link"), placeholder: "https://calendar.google.com/calendar/ical/…/basic.ics", secret: true }];
+}
+const CAL_KEYS: string[] = Array.from({ length: CAL_SLOTS }, (_, i) => calFields(i + 1).map((f) => f.key)).flat();
+
 /** Where Whoop sends the browser back (src-tauri/src/whoop.rs REDIRECT_URI). */
 const WHOOP_REDIRECT = "http://localhost:47431/whoop";
 
@@ -809,6 +817,9 @@ const INTEGRATIONS: IntegrationDef[] = [
       { key: "whoop-client-secret", label: N_("Client secret"), placeholder: "…", secret: true },
     ],
     hint: N_("Create an app at developer.whoop.com with this redirect URL: {url}. Paste its Client ID and Client Secret, save them, then click Connect Whoop: your browser opens to sign in, and Coucou keeps the tokens in the {store}, never on disk.") },
+  { id: "integration_calendar", name: N_("Calendar"), color: "#FF7A59",
+    fields: calFields(1),
+    hint: N_("The secret iCal address of a calendar: in Google Calendar, Settings → your calendar → Secret address in iCal format; in Outlook, Settings → Shared calendars → Publish; in iCloud, a shared calendar's link. Read every ten minutes; nothing is written.") },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
 ];
@@ -913,21 +924,21 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       rows.append(h("div", { class: "row" }, connect, forget, status));
       void refresh();
     }
-    if (def.id === "integration_homeassistant") {
-      // Up to four houses: a slot's fields show once it has an address, or
-      // after a click on the button, one slot at a time.
+    // Up to four of them: a slot's fields show once its first key is set, or
+    // after a click on the button, one slot at a time.
+    const slotBlocks = (count: number, fields: (slot: number) => IntegrationDef["fields"], label: (slot: number) => string, more: HTMLElement) => {
       const blocks: HTMLElement[] = [];
-      const more = h("button", { text: t("Add another Home Assistant") });
       // Shown or hidden through `display`, not `hidden`: the block's own
       // inline `display:flex` would win over the attribute.
       const shown = (b: HTMLElement) => b.style.display !== "none";
       const show = (b: HTMLElement, on: boolean) => { b.style.display = on ? "flex" : "none"; };
-      for (let slot = 2; slot <= HA_SLOTS; slot++) {
+      for (let slot = 2; slot <= count; slot++) {
+        const slotFields = fields(slot);
         const block = h("div", { style: "flex-direction:column;gap:6px;padding-top:6px" },
-          h("div", { class: "hint", text: t("Instance {n}", { n: slot }) }),
-          ...haFields(slot).map(fieldRow),
+          h("div", { class: "hint", text: label(slot) }),
+          ...slotFields.map(fieldRow),
         );
-        show(block, present[haKey(slot, "url")] ?? false);
+        show(block, present[slotFields[0].key] ?? false);
         blocks.push(block);
         rows.append(block);
       }
@@ -939,6 +950,12 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       });
       refresh();
       rows.append(h("div", { class: "row" }, more));
+    };
+    if (def.id === "integration_homeassistant") {
+      slotBlocks(HA_SLOTS, haFields, (slot) => t("Instance {n}", { n: slot }), h("button", { text: t("Add another Home Assistant") }));
+    }
+    if (def.id === "integration_calendar") {
+      slotBlocks(CAL_SLOTS, calFields, (slot) => t("Calendar {n}", { n: slot }), h("button", { text: t("Add another calendar") }));
     }
     if (def.id === "integration_spotify") {
       // As on the Mac's row: said only when there is no Spotify to launch.
@@ -954,7 +971,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         h("div", { style: "display:flex;align-items:center;gap:8px;min-width:132px;padding-top:4px" },
           sw,
           colorDot(def, "", () => settings.pillColors, pickColor),
-          h("span", { style: "font-size:12.5px", text: def.name }),
+          h("span", { style: "font-size:12.5px", text: t(def.name) }),
         ),
         rows,
       ),
@@ -1417,7 +1434,7 @@ async function render() {
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
-    ...HA_KEYS, "whoop-client-id", "whoop-client-secret",
+    ...HA_KEYS, "whoop-client-id", "whoop-client-secret", ...CAL_KEYS,
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;

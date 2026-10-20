@@ -399,6 +399,11 @@ test("service cards say what the pills say and never an address, a subject, a de
     strain: 11.37, sleep: { performance: 88, hours: 6.5, end: new Date(now - 7_200_000).toISOString() },
     workout: { sport: "Running", strain: 9.8, end: null },
   });
+  const nowSecs = Math.floor(now / 1000);
+  service("integration_calendar", { now: nowSecs, offset: 0, calendars: 1, errors: [], events: [
+    { uid: "a", title: "Dentista", location: "Via Roma 1, Milano", start: nowSecs + 1800, end: nowSecs + 5400, allDay: false, calendar: 1 },
+    { uid: "b", title: "Compleanno", location: null, start: nowSecs - 3600, end: nowSecs + 80_000, allDay: true, calendar: 1 },
+  ] });
   const cards = serviceCards(now);
   const byId = Object.fromEntries(cards.map((c) => [c.id, c]));
   assert.equal(byId.integration_stripe.headline, "12.50 EUR");
@@ -410,6 +415,9 @@ test("service cards say what the pills say and never an address, a subject, a de
   assert.equal(byId.integration_github.headline, "1.5k Total stars");
   assert.equal(byId.integration_vercel.items[0].label, "shop");
   assert.equal(byId.integration_calcom.items[0].label, "Intro call");
+  assert.ok(byId.integration_calendar.headline.startsWith("Next at "));
+  assert.deepEqual(byId.integration_calendar.items.map((i) => i.label), ["Dentista", "Compleanno"]);
+  assert.equal(byId.integration_calendar.items[1].detail, "All day");
   assert.equal(byId.integration_whoop.headline, "Recovery 78 %");
   assert.deepEqual(byId.integration_whoop.items, [{ label: "Sleep", detail: "88 %" }, { label: "Strain", detail: "11.4" }, { label: "HRV", detail: "61 ms" }]);
   assert.equal(byId.integration_homeassistant.headline, "1 notifications");
@@ -420,7 +428,7 @@ test("service cards say what the pills say and never an address, a subject, a de
     { label: "Core 2026.10", detail: "Update available" },
   ]);
   const all = JSON.stringify(cards);
-  for (const secret of ["alice", "secret", "Alice", "invoice", "https://", "example.com", "192.168", "8123"]) assert.ok(!all.includes(secret), `${secret} must not be in a card`);
+  for (const secret of ["alice", "secret", "Alice", "invoice", "https://", "example.com", "192.168", "8123", "Via Roma"]) assert.ok(!all.includes(secret), `${secret} must not be in a card`);
   for (const id of Object.keys(State.integrations)) delete State.integrations[id];
 });
 

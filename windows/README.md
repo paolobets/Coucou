@@ -524,6 +524,13 @@ own window.
   against the SHA-256 GitHub publishes for it, and the installer (not Coucou)
   replaces the app and starts it again.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- A **Calendar** pill, not on the Mac yet: Settings → Integrations takes up
+  to four calendars by their secret iCal address (Google Calendar, Outlook,
+  iCloud, any webcal), no sign-in. Coucou reads the feeds every ten minutes,
+  expands the recurrences itself (daily, weekly, monthly, yearly, with
+  exceptions and moved instances) and shows today's and tomorrow's events;
+  ten minutes before one starts, Mochi says its name. Times are read in the
+  computer's time zone.
 - A **Whoop** pill, not on the Mac yet: Settings → Integrations takes the
   Client ID and Client Secret of an app of your own at developer.whoop.com
   (redirect URL `http://localhost:47431/whoop`), then **Connect Whoop** opens

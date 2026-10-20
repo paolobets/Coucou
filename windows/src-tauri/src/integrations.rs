@@ -72,7 +72,9 @@ pub fn start(app: AppHandle) {
     spawn_github_loops(app.clone());
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
     spawn(app.clone(), "integration_notion", 9, 300, poll_notion);
-    spawn(app, crate::whoop::PILL, 12, 900, crate::whoop::poll);
+    spawn(app.clone(), crate::whoop::PILL, 12, 900, crate::whoop::poll);
+    // Every minute for the reminders; the feeds themselves are read every ten (calendar.rs).
+    spawn(app, crate::calendar::PILL, 14, 60, crate::calendar::poll);
 }
 
 /// True when the user has this integration switched on in settings.
@@ -122,6 +124,10 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
         "integration_whoop" => crate::whoop::poll(app).await,
+        "integration_calendar" => {
+            crate::calendar::config_changed();
+            crate::calendar::poll(app).await
+        }
         _ => {}
     }
 }

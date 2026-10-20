@@ -29,10 +29,13 @@ pub const KNOWN_KEYS: &[&str] = &[
 ];
 
 fn entry(key: &str) -> Option<Entry> {
-    // Home Assistant's keys (an address, a token and an entity list per
-    // instance, homeassistant.rs) are kept here too, so nothing of the
-    // integration lands on disk.
-    if !KNOWN_KEYS.contains(&key) && !crate::homeassistant::known_keys().iter().any(|k| k == key) {
+    // Home Assistant's keys (an address and a token per instance,
+    // homeassistant.rs) and the calendars' iCal links (calendar.rs) are kept
+    // here too, so nothing of those integrations lands on disk.
+    if !KNOWN_KEYS.contains(&key)
+        && !crate::homeassistant::known_keys().iter().any(|k| k == key)
+        && !crate::calendar::known_keys().iter().any(|k| k == key)
+    {
         return None;
     }
     Entry::new(SERVICE, key).ok()

@@ -536,6 +536,62 @@ function whoopCard(): HTMLElement {
   return h("div", { class: "int-card" }, header(WHOOP_GREEN, "Whoop", t("Recovery")), headline, rows);
 }
 
+// ── Calendar ──────────────────────────────────────────────────────────────────
+
+const CAL_ORANGE = "#FF7A59";
+
+/** The local day (days since 1970) an instant falls on, with the computer's offset. */
+function localDay(secs: number, offset: number): number {
+  return Math.floor((secs + offset) / 86_400);
+}
+
+function clock(secs: number, offset: number): string {
+  const s = ((secs + offset) % 86_400 + 86_400) % 86_400;
+  return `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}`;
+}
+
+/** Today, Tomorrow, or the date, for the day an event starts on. */
+export function calendarDayLabel(day: number, today: number): string {
+  if (day === today) return t("Today");
+  if (day === today + 1) return t("Tomorrow");
+  return new Date(day * 86_400_000).toLocaleDateString(language(), { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "UTC" });
+}
+
+function calendarCard(): HTMLElement {
+  const d = get("integration_calendar");
+  const now = typeof d.now === "number" ? d.now : Math.floor(Date.now() / 1000);
+  const offset = typeof d.offset === "number" ? d.offset : -new Date().getTimezoneOffset() * 60;
+  const events = arr("integration_calendar", "events");
+  const errors = arr("integration_calendar", "errors");
+  const today = localDay(now, offset);
+  const rows = h("div", { class: "int-rows tight" });
+  for (const e of errors) {
+    rows.append(h("div", { class: "int-status", text: `${t("Calendar {n}", { n: Number(e.calendar) })}: ${String(e.error ?? "")}` }));
+  }
+  if (events.length === 0 && errors.length === 0) {
+    rows.append(h("div", { class: "int-empty", text: t("No events") }));
+  }
+  let lastDay: number | null = null;
+  for (const e of events.slice(0, 8)) {
+    const start = Number(e.start);
+    const end = Number(e.end);
+    const day = localDay(start, offset);
+    if (day !== lastDay) {
+      rows.append(h("div", { class: "int-status", text: calendarDayLabel(day, today) }));
+      lastDay = day;
+    }
+    const ongoing = start <= now && end > now;
+    const when = e.allDay ? t("All day") : `${clock(start, offset)}–${clock(end, offset)}`;
+    rows.append(listRow(ongoing ? "#22C55E" : CAL_ORANGE, ongoing,
+      h("span", { class: "int-time", style: `color:${ongoing ? "#22C55E" : CAL_ORANGE}`, text: when }),
+      h("span", { class: "int-name", title: typeof e.location === "string" ? e.location : "", text: String(e.title ?? "") }),
+    ));
+  }
+  const next = events.find((e) => Number(e.start) > now && !e.allDay);
+  const extra = next ? h("span", { text: t("Next at {time}", { time: clock(Number(next.start), offset) }) }) : undefined;
+  return h("div", { class: "int-card" }, header(CAL_ORANGE, t("Calendar"), t("Schedule"), extra), rows);
+}
+
 // ── n8n ───────────────────────────────────────────────────────────────────────
 
 function n8nCard(task: AgentTask, onDetail: () => void, openSettings: () => void): HTMLElement {
@@ -623,6 +679,8 @@ export function hasIntegrationData(id: string): boolean {
       return info.loaded;
     case "integration_whoop":
       return info.loaded;
+    case "integration_calendar":
+      return info.loaded;
     default:
       return false;
   }
@@ -666,6 +724,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return homeassistantCard();
     case "integration_whoop":
       return whoopCard();
+    case "integration_calendar":
+      return calendarCard();
     default:
       return idleCard(task, hooks.openSettings);
   }

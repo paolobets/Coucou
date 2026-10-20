@@ -2,6 +2,7 @@
 
 mod agent_hooks;
 mod agents;
+mod calendar;
 mod chat;
 mod claude;
 mod codex_plan;
@@ -546,6 +547,9 @@ fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> 
     secrets::set(&key, &value)?;
     if key.starts_with("homeassistant-") {
         homeassistant::config_changed();
+    }
+    if key.starts_with("calendar-") {
+        calendar::config_changed();
     }
     if key == claude::KEY {
         voice::sync(&app);

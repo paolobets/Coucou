@@ -156,6 +156,24 @@ const BUILDERS: Record<string, Builder> = {
       items: items.slice(0, 3),
     };
   },
+  integration_calendar: () => {
+    // The next events' titles and times; a location can be an address, so it stays here.
+    const d = (State.integrations.integration_calendar?.data ?? {}) as Record<string, unknown>;
+    const now = typeof d.now === "number" ? d.now : Math.floor(Date.now() / 1000);
+    const offset = typeof d.offset === "number" ? d.offset : 0;
+    const clock = (secs: number) => {
+      const s = ((secs + offset) % 86_400 + 86_400) % 86_400;
+      return `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}`;
+    };
+    const events = list("integration_calendar", "events").filter((e) => Number(e.end) > now);
+    const next = events.find((e) => !e.allDay && Number(e.start) > now);
+    return {
+      id: "integration_calendar", title: t("Calendar"),
+      headline: next ? t("Next at {time}", { time: clock(Number(next.start)) }) : t("No events"),
+      reason: t("Schedule"),
+      items: events.slice(0, 3).map((e) => ({ label: String(e.title ?? ""), detail: e.allDay ? t("All day") : clock(Number(e.start)) })),
+    };
+  },
   integration_n8n: () => {
     const task = State.tasks.find((x) => x.id === "integration_n8n");
     if (!task || (task.state !== "finished" && task.state !== "error")) return null;
