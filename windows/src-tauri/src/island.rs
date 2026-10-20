@@ -96,6 +96,13 @@ impl PollGate {
         }
     }
 
+    /// Waits for the island to come back, at most `timeout`; true when it is active.
+    pub(crate) fn wait_until_active_for(&self, timeout: Duration) -> bool {
+        let guard = self.active.lock().unwrap();
+        let (guard, _) = self.cv.wait_timeout_while(guard, timeout, |on| !*on).unwrap();
+        *guard
+    }
+
     pub(crate) fn is_active(&self) -> bool {
         *self.active.lock().unwrap()
     }
@@ -363,7 +370,10 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y;
+    // Under a taskbar docked at the top of the screen the strip would be
+    // unreachable: the island then starts where the work area starts.
+    let wa = m.work_area();
+    let y = if wa.position.y > mp.y { wa.position.y } else { mp.y };
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
@@ -424,7 +434,22 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
         // find no cursor costs CPU for nothing.
         let (period, screen_every) = if platform::CURSOR_POLL { (16, 30) } else { (500, 1) };
         loop {
-            gate.wait_until_active();
+            // Parked while the island is hidden, but the display layout is still
+            // looked at every two seconds: a monitor unplugged, a scale changed
+            // or the preference saved meanwhile would leave the wake strip where
+            // the screen used to be, and an island nobody can reach by hovering.
+            while !gate.wait_until_active_for(Duration::from_secs(2)) {
+                let now = current_screen_key(&app);
+                if now.is_some() && now != last_screen {
+                    let first = last_screen.is_none();
+                    last_screen = now;
+                    if !first && gate.collapsed.load(Ordering::Relaxed) {
+                        crate::log::line("display layout changed while hidden — moving the wake strip".to_string());
+                        apply_geometry(&app, &screen_pref(&app), true);
+                        refresh_click_through(&app, &gate);
+                    }
+                }
+            }
             let mut last = (f64::MIN, f64::MIN);
             let mut ticks: u32 = 0;
             while gate.is_active() {
