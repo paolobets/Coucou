@@ -103,13 +103,14 @@ test("labels() tables and dates read in the current language", () => {
 
 test("System follows the system's language when Coucou has it, else English", () => {
   assert.equal(resolveLanguage("", ["fr-FR", "en-US"]), "fr");
-  assert.equal(resolveLanguage("", ["it-IT", "es-MX"]), "es");
+  assert.equal(resolveLanguage("", ["nl-NL", "es-MX"]), "es");
+  assert.equal(resolveLanguage("", ["it-IT", "es-MX"]), "it");
   assert.equal(resolveLanguage("", ["pt-PT"]), "pt-BR");
   assert.equal(resolveLanguage("", ["pt"]), "pt-BR");
   assert.equal(resolveLanguage("", ["zh-CN"]), "zh-Hans");
   assert.equal(resolveLanguage("", ["zh-TW"]), "en"); // Traditional is not one of ours
   assert.equal(resolveLanguage("", ["ar-EG"]), "ar");
-  assert.equal(resolveLanguage("", ["it-IT"]), "en");
+  assert.equal(resolveLanguage("", ["nl-NL"]), "en");
   assert.equal(resolveLanguage("", []), "en");
   // A picked language wins; one this build doesn't know means System.
   assert.equal(resolveLanguage("ru", ["fr-FR"]), "ru");
@@ -117,7 +118,7 @@ test("System follows the system's language when Coucou has it, else English", ()
 });
 
 test("the picker offers the Mac's languages, Arabic reads right to left", () => {
-  assert.deepEqual(LANGUAGES.map((l) => l.code), ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr"]);
+  assert.deepEqual(LANGUAGES.map((l) => l.code), ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr", "it"]);
   assert.equal(isRtl("ar"), true);
   assert.equal(OTHERS.some((l) => l !== "ar" && isRtl(l)), false);
 });
@@ -155,7 +156,7 @@ test("German regional locales select Deutsch and apply left-to-right document me
   }
   assert.equal(resolveLanguage("de", ["fr-FR"]), "de");
   assert.equal(resolveLanguage("fr", ["de-DE"]), "fr");
-  assert.equal(resolveLanguage("", ["it-IT", "de-DE", "es-MX"]), "de");
+  assert.equal(resolveLanguage("", ["nl-NL", "de-DE", "es-MX"]), "de");
   assert.equal(LANGUAGES.find((l) => l.code === "de")?.name, "Deutsch");
   const previousRoot = document.documentElement;
   document.documentElement = { lang: "en", dataset: {} };
