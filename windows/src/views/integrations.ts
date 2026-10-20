@@ -116,6 +116,15 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         onclick: () => void Bridge.openN8n(),
       }),
     );
+  } else if (task.id === "integration_homeassistant") {
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}d9`,
+        text: t("Open {name}", { name: "Home Assistant" }),
+        onclick: () => void Bridge.openHomeAssistant(),
+      }),
+    );
   } else if (OPEN_URLS[task.id]) {
     actions.append(
       h("button", {
@@ -357,6 +366,101 @@ function calcomCard(): HTMLElement {
   return h("div", { class: "int-card" }, header("#C9956A", "Cal.com", t("Schedule")), rows);
 }
 
+// ── Home Assistant ────────────────────────────────────────────────────────────
+
+const HA_BLUE = "#41BDF5";
+
+/** The alarm panel's state, in words. */
+function alarmLabel(state: string): string {
+  switch (state) {
+    case "disarmed": return t("Disarmed");
+    case "armed_home": return t("Armed home");
+    case "armed_away": return t("Armed away");
+    case "armed_night": return t("Armed night");
+    case "armed_vacation": return t("Armed vacation");
+    case "arming": return t("Arming…");
+    case "pending": return t("Pending…");
+    case "triggered": return t("Alarm triggered");
+    default: return state;
+  }
+}
+
+/** A watched entity's state, in words where Home Assistant uses a keyword. */
+function entityState(w: Record<string, unknown>): string {
+  const state = String(w.state ?? "");
+  if (state === "on") return t("On");
+  if (state === "off") return t("Off");
+  if (state === "unavailable") return t("Not available");
+  return w.unit ? `${state} ${String(w.unit)}` : state;
+}
+
+function homeassistantCard(): HTMLElement {
+  const id = "integration_homeassistant";
+  const d = get(id);
+  const alarms = arr(id, "alarms");
+  const updates = Array.isArray(d.updates) ? (d.updates as unknown[]).map(String) : [];
+  const problems = Array.isArray(d.problems) ? (d.problems as unknown[]).map(String) : [];
+  const lightsOn = typeof d.lightsOn === "number" ? d.lightsOn : 0;
+  const watched = arr(id, "watched");
+  const name = typeof d.name === "string" && d.name ? d.name : "Home Assistant";
+
+  const rows = h("div", { class: "int-rows tight" });
+  for (const a of alarms) {
+    const triggered = a.state === "triggered";
+    const accent = triggered ? "#F4505E" : a.state === "disarmed" ? "#6B7079" : "#22C55E";
+    rows.append(listRow(accent, triggered,
+      h("span", { class: "int-name", text: String(a.name ?? "") }),
+      h("span", { class: "int-time", style: `color:${accent}`, text: alarmLabel(String(a.state ?? "")) }),
+    ));
+  }
+  if (updates.length > 0) {
+    rows.append(listRow("#F5A524", false,
+      h("span", { class: "int-name", text: t("{n} updates available", { n: updates.length }) }),
+      h("span", { class: "int-time", style: "color:#F5A524", text: updates.slice(0, 2).join(", ") }),
+    ));
+  }
+  if (problems.length > 0) {
+    rows.append(listRow("#F4505E", false,
+      h("span", { class: "int-name", text: t("{n} problems", { n: problems.length }) }),
+      h("span", { class: "int-time", style: "color:#F4505E", text: problems.slice(0, 2).join(", ") }),
+    ));
+  }
+  if (alarms.length === 0 && updates.length === 0 && problems.length === 0) {
+    rows.append(listRow("#22C55E", false, h("span", { class: "int-name", text: t("All quiet") })));
+  }
+  for (const w of watched.slice(0, 6)) {
+    const entityId = String(w.entityId ?? "");
+    const domain = String(w.domain ?? "");
+    const action = typeof w.action === "string" ? w.action : null;
+    const row = listRow(HA_BLUE, false,
+      h("span", { class: "int-name", text: String(w.name ?? entityId) }),
+      h("span", { class: "int-time", style: `color:${HA_BLUE}`, text: entityState(w) }),
+    );
+    if (action) {
+      // One click, one service call, then the card shows what Home Assistant
+      // reports back. Rust refuses anything outside its short list.
+      const button = h("button", {
+        class: "link-btn",
+        style: `color:${HA_BLUE}d9;margin-left:auto`,
+        text: domain === "scene" ? t("Activate") : t("Toggle"),
+      });
+      button.addEventListener("click", async () => {
+        button.setAttribute("disabled", "");
+        try {
+          await Bridge.homeAssistantCallService(domain, action, entityId);
+        } catch (err) {
+          button.textContent = String(err);
+        }
+      });
+      row.append(button);
+    }
+    rows.append(row);
+  }
+
+  const extra = lightsOn > 0 ? h("span", { text: t("{n} lights on", { n: lightsOn }) }) : undefined;
+  return h("div", { class: "int-card" }, header(HA_BLUE, name, t("Home"), extra), rows);
+}
+
 // ── n8n ───────────────────────────────────────────────────────────────────────
 
 function n8nCard(task: AgentTask, onDetail: () => void, openSettings: () => void): HTMLElement {
@@ -440,6 +544,8 @@ export function hasIntegrationData(id: string): boolean {
       return arr(id, "pages").length > 0;
     case "integration_calcom":
       return info.loaded;
+    case "integration_homeassistant":
+      return info.loaded;
     default:
       return false;
   }
@@ -479,6 +585,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return notionCard();
     case "integration_calcom":
       return calcomCard();
+    case "integration_homeassistant":
+      return homeassistantCard();
     default:
       return idleCard(task, hooks.openSettings);
   }

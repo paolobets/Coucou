@@ -573,6 +573,19 @@ fn open_n8n() {
     }
 }
 
+/// Opens the configured Home Assistant — its address lives in the Credential Manager.
+#[tauri::command]
+fn open_homeassistant() {
+    integrations::open_homeassistant();
+}
+
+/// A toggle or a scene from the Home Assistant card; integrations.rs keeps the
+/// list of what may be called.
+#[tauri::command]
+async fn homeassistant_call_service(app: AppHandle, domain: String, service: String, entity_id: String) -> Result<(), String> {
+    integrations::homeassistant_call_service(app, domain, service, entity_id).await
+}
+
 /// Refresh buttons in the integration cards.
 #[tauri::command]
 async fn refresh_integration(app: AppHandle, id: String) {
@@ -800,6 +813,8 @@ pub fn run() {
             refresh_integration,
             github_refresh,
             open_n8n,
+            open_homeassistant,
+            homeassistant_call_service,
             open_settings_window,
             set_paused,
             shortcuts_status,

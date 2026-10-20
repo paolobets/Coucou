@@ -128,6 +128,10 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("calcom-api-key") },
   { id: "integration_stripe", name: "Stripe", color: "#0570DE", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("stripe-api-key") },
+  // Home Assistant, first on Windows and Linux (src-tauri/src/integrations.rs
+  // polls its REST API with a long-lived token).
+  { id: "integration_homeassistant", name: "Home Assistant", color: "#41BDF5", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("homeassistant-token") },
   { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
   // Spotify through MPRIS on Linux and the system media controls on Windows

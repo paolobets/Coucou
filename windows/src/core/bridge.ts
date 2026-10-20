@@ -356,6 +356,11 @@ export const Bridge = {
   githubRefresh: (section: "pulse" | "activity") => call<void>("github_refresh", { section }),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
+  /** Opens the configured Home Assistant in the browser. */
+  openHomeAssistant: () => call<void>("open_homeassistant"),
+  /** A toggle or a scene from the Home Assistant card (Rust keeps the list of what may be called). */
+  homeAssistantCallService: (domain: string, service: string, entityId: string) =>
+    callOrThrow<void>("homeassistant_call_service", { domain, service, entityId }),
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),

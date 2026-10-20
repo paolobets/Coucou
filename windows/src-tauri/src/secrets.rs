@@ -20,6 +20,12 @@ pub const KNOWN_KEYS: &[&str] = &[
     "resend-api-key",
     "notion-api-key",
     "calcom-api-key",
+    // Home Assistant: the instance address, a long-lived access token, and the
+    // entity ids the card watches (a list, not a secret, kept with the others
+    // so nothing of the integration lands on disk).
+    "homeassistant-url",
+    "homeassistant-token",
+    "homeassistant-entities",
     // « OK Coucou »'s answers in an ElevenLabs voice.
     "elevenlabs-api-key",
 ];

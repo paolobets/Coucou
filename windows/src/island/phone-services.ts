@@ -103,6 +103,31 @@ const BUILDERS: Record<string, Builder> = {
       items: bookings.slice(0, 3).map((b) => ({ label: String(b.title ?? t("Meeting")), detail: when(b) })),
     };
   },
+  integration_homeassistant: () => {
+    // The house's name, what waits (alarm, updates, problems), and the watched
+    // entities with their state. Never the address.
+    const d = (State.integrations.integration_homeassistant?.data ?? {}) as Record<string, unknown>;
+    const alarms = list("integration_homeassistant", "alarms");
+    const updates = Array.isArray(d.updates) ? (d.updates as unknown[]).length : 0;
+    const problems = Array.isArray(d.problems) ? (d.problems as unknown[]).length : 0;
+    const triggered = alarms.some((a) => a.state === "triggered");
+    const headline = triggered
+      ? t("Alarm triggered")
+      : updates > 0
+        ? t("{n} updates available", { n: updates })
+        : problems > 0
+          ? t("{n} problems", { n: problems })
+          : t("All quiet");
+    return {
+      id: "integration_homeassistant", title: "Home Assistant",
+      headline,
+      reason: typeof d.name === "string" && d.name ? d.name : t("Home"),
+      items: list("integration_homeassistant", "watched").slice(0, 3).map((w) => ({
+        label: String(w.name ?? w.entityId ?? ""),
+        detail: `${String(w.state ?? "")}${w.unit ? ` ${String(w.unit)}` : ""}`,
+      })),
+    };
+  },
   integration_n8n: () => {
     const task = State.tasks.find((x) => x.id === "integration_n8n");
     if (!task || (task.state !== "finished" && task.state !== "error")) return null;

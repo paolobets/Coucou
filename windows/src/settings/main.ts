@@ -784,6 +784,13 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
+  { id: "integration_homeassistant", name: "Home Assistant", color: "#41BDF5",
+    fields: [
+      { key: "homeassistant-url", label: N_("Instance URL"), placeholder: "http://homeassistant.local:8123", secret: false },
+      { key: "homeassistant-token", label: N_("Access token"), placeholder: "eyJ…", secret: true },
+      { key: "homeassistant-entities", label: N_("Entities"), placeholder: "light.kitchen, sensor.power, scene.movie", secret: false },
+    ],
+    hint: N_("A long-lived access token from your Home Assistant profile → Security. The entities listed show on the card with their state; lights, switches and fans get a toggle, scenes a button. Alarm panels, updates and problem sensors are always shown.") },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
 ];
@@ -1333,6 +1340,7 @@ async function render() {
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "homeassistant-url", "homeassistant-token", "homeassistant-entities",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;

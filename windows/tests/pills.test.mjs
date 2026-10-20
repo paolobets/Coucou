@@ -43,6 +43,8 @@ test("the catalog holds the Mac's pills with the Claude Code label for Windows a
     ["integration_notion", "Notion", "#8C8C8C", "service", "Integration"],
     ["integration_calcom", "Cal.com", "#C9956A", "service", "Integration"],
     ["integration_stripe", "Stripe", "#0570DE", "service", "Integration"],
+    // Windows and Linux first: not in the Mac's catalog yet.
+    ["integration_homeassistant", "Home Assistant", "#41BDF5", "service", "Integration"],
     ["integration_music", "Apple Music", "#FA2D48", "service", "Integration"],
     ["integration_spotify", "Spotify", "#1DB954", "service", "Integration"],
   ];
