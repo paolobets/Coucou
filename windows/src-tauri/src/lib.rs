@@ -583,13 +583,6 @@ fn open_homeassistant(slot: usize) {
     homeassistant::open(slot);
 }
 
-/// A toggle or a scene from the Home Assistant card; homeassistant.rs keeps the
-/// list of what may be called.
-#[tauri::command]
-async fn homeassistant_call_service(slot: usize, domain: String, service: String, entity_id: String) -> Result<(), String> {
-    homeassistant::call_service(slot, domain, service, entity_id).await
-}
-
 /// The ✕ on a notification in the Home Assistant card.
 #[tauri::command]
 async fn homeassistant_dismiss_notification(slot: usize, id: String) -> Result<(), String> {
@@ -824,7 +817,6 @@ pub fn run() {
             github_refresh,
             open_n8n,
             open_homeassistant,
-            homeassistant_call_service,
             homeassistant_dismiss_notification,
             open_settings_window,
             set_paused,

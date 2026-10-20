@@ -392,7 +392,6 @@ test("service cards say what the pills say and never an address, a subject, a de
     slot: 1, url: "http://192.168.1.31:8123", name: "Casa", connected: true, error: null,
     alarms: [{ entityId: "alarm_control_panel.home", name: "Home", state: "disarmed" }],
     updates: ["Core 2026.10"], problems: [], lightsOn: 2,
-    watched: [{ entityId: "sensor.power", name: "Power", state: "412", unit: "W", domain: "sensor", action: null }],
     notifications: [{ id: "backup", title: "Backup done", message: "Saved to https://nas.example.com/backup", createdAt: null }],
   }] });
   const cards = serviceCards(now);
@@ -410,7 +409,8 @@ test("service cards say what the pills say and never an address, a subject, a de
   assert.equal(byId.integration_homeassistant.reason, "Casa");
   assert.deepEqual(byId.integration_homeassistant.items, [
     { label: "Backup done", detail: "" },
-    { label: "Power", detail: "412 W" },
+    { label: "Home", detail: "disarmed" },
+    { label: "Core 2026.10", detail: "Update available" },
   ]);
   const all = JSON.stringify(cards);
   for (const secret of ["alice", "secret", "Alice", "invoice", "https://", "example.com", "192.168", "8123"]) assert.ok(!all.includes(secret), `${secret} must not be in a card`);

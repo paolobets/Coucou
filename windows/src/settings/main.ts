@@ -767,14 +767,13 @@ interface IntegrationDef {
 
 /** Home Assistant instances (homeassistant.rs): the first keeps the keys the pill shipped with. */
 const HA_SLOTS = 4;
-function haKey(slot: number, what: "url" | "token" | "entities"): string {
+function haKey(slot: number, what: "url" | "token"): string {
   return slot <= 1 ? `homeassistant-${what}` : `homeassistant-${slot}-${what}`;
 }
 function haFields(slot: number): IntegrationDef["fields"] {
   return [
     { key: haKey(slot, "url"), label: N_("Instance URL"), placeholder: "http://homeassistant.local:8123", secret: false },
     { key: haKey(slot, "token"), label: N_("Access token"), placeholder: "eyJ…", secret: true },
-    { key: haKey(slot, "entities"), label: N_("Entities"), placeholder: "light.kitchen, sensor.power, scene.movie", secret: false },
   ];
 }
 const HA_KEYS: string[] = Array.from({ length: HA_SLOTS }, (_, i) => haFields(i + 1).map((f) => f.key)).flat();
@@ -800,7 +799,7 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   { id: "integration_homeassistant", name: "Home Assistant", color: "#41BDF5",
     fields: haFields(1),
-    hint: N_("A long-lived access token from your Home Assistant profile → Security. The entities listed show on the card with their state; lights, switches and fans get a toggle, scenes a button. Alarm panels, updates, problem sensors and persistent notifications are always shown.") },
+    hint: N_("A long-lived access token from your Home Assistant profile → Security. The card shows the persistent notifications, the alarm panels, the updates waiting, the problem sensors and how many lights are on, as they change.") },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
 ];

@@ -104,8 +104,8 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
   integration_homeassistant: () => {
-    // What waits across the houses (notifications, alarm, updates, problems)
-    // and the first notifications and watched entities. Never an address.
+    // What waits across the houses: notifications, alarm panels, updates,
+    // problems. Never an address.
     const instances = list("integration_homeassistant", "instances");
     const sum = (key: string) => instances.reduce((n, i) => n + (Array.isArray(i[key]) ? (i[key] as unknown[]).length : 0), 0);
     const triggered = instances.some((i) => Array.isArray(i.alarms) && (i.alarms as Record<string, unknown>[]).some((a) => a.state === "triggered"));
@@ -127,10 +127,10 @@ const BUILDERS: Record<string, Builder> = {
       const notes = Array.isArray(inst.notifications) ? (inst.notifications as Record<string, unknown>[]) : [];
       // The title only: a message can carry a link, an address or a name.
       for (const n of notes) items.push({ label: String(n.title ?? t("Notification")), detail: "" });
-      const watched = Array.isArray(inst.watched) ? (inst.watched as Record<string, unknown>[]) : [];
-      for (const w of watched) {
-        items.push({ label: String(w.name ?? w.entityId ?? ""), detail: `${String(w.state ?? "")}${w.unit ? ` ${String(w.unit)}` : ""}` });
-      }
+      const alarms = Array.isArray(inst.alarms) ? (inst.alarms as Record<string, unknown>[]) : [];
+      for (const a of alarms) items.push({ label: String(a.name ?? ""), detail: String(a.state ?? "") });
+      const ups = Array.isArray(inst.updates) ? (inst.updates as unknown[]).map(String) : [];
+      for (const u of ups) items.push({ label: u, detail: t("Update available") });
     }
     return {
       id: "integration_homeassistant", title: "Home Assistant",

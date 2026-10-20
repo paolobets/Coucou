@@ -369,8 +369,8 @@ function calcomCard(): HTMLElement {
 // ── Home Assistant ────────────────────────────────────────────────────────────
 //
 // One card, up to four instances (homeassistant.rs): each gets its own header
-// with the house's name, then its persistent notifications, what waits (alarm,
-// updates, problems) and the entities picked in Settings.
+// with the house's name, then its persistent notifications and what waits
+// (alarm, updates, problems).
 
 const HA_BLUE = "#41BDF5";
 
@@ -389,15 +389,6 @@ function alarmLabel(state: string): string {
   }
 }
 
-/** A watched entity's state, in words where Home Assistant uses a keyword. */
-function entityState(w: Record<string, unknown>): string {
-  const state = String(w.state ?? "");
-  if (state === "on") return t("On");
-  if (state === "off") return t("Off");
-  if (state === "unavailable") return t("Not available");
-  return w.unit ? `${state} ${String(w.unit)}` : state;
-}
-
 export function homeassistantInstances(): Record<string, unknown>[] {
   return arr("integration_homeassistant", "instances");
 }
@@ -410,7 +401,6 @@ function homeassistantSection(inst: Record<string, unknown>, several: boolean): 
   const notifications = list("notifications");
   const updates = strings("updates");
   const problems = strings("problems");
-  const watched = list("watched");
   const connected = inst.connected === true;
   const name = typeof inst.name === "string" && inst.name ? inst.name : t("Instance {n}", { n: slot });
   const out: Node[] = [];
@@ -467,35 +457,6 @@ function homeassistantSection(inst: Record<string, unknown>, several: boolean): 
   }
   if (connected && notifications.length === 0 && alarms.length === 0 && updates.length === 0 && problems.length === 0) {
     out.push(listRow("#22C55E", false, h("span", { class: "int-name", text: t("All quiet") })));
-  }
-  for (const w of watched.slice(0, several ? 4 : 6)) {
-    const entityId = String(w.entityId ?? "");
-    const domain = String(w.domain ?? "");
-    const action = typeof w.action === "string" ? w.action : null;
-    const row = listRow(HA_BLUE, false,
-      h("span", { class: "int-name", text: String(w.name ?? entityId) }),
-      h("span", { class: "int-time", style: `color:${HA_BLUE}`, text: entityState(w) }),
-    );
-    if (action && connected) {
-      // One click, one service call; the state that follows comes back on the
-      // socket, so the row shows what Home Assistant reports. Rust refuses
-      // anything outside its short list.
-      const button = h("button", {
-        class: "link-btn",
-        style: `color:${HA_BLUE}d9;margin-left:auto`,
-        text: domain === "scene" ? t("Activate") : t("Toggle"),
-      });
-      button.addEventListener("click", async () => {
-        button.setAttribute("disabled", "");
-        try {
-          await Bridge.homeAssistantCallService(slot, domain, action, entityId);
-        } catch (err) {
-          button.textContent = String(err);
-        }
-      });
-      row.append(button);
-    }
-    out.push(row);
   }
   return out;
 }

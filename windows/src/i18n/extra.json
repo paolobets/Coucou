@@ -5609,20 +5609,6 @@
    "tr": "Erişim belirteci",
    "it": "Token di accesso"
   },
-  "Entities": {
-   "zh-Hans": "实体",
-   "hi": "एंटिटी",
-   "es": "Entidades",
-   "ar": "الكيانات",
-   "fr": "Entités",
-   "bn": "এনটিটি",
-   "pt-BR": "Entidades",
-   "ru": "Сущности",
-   "id": "Entitas",
-   "de": "Entitäten",
-   "tr": "Varlıklar",
-   "it": "Entità"
-  },
   "Disarmed": {
    "zh-Hans": "已撤防",
    "hi": "निष्क्रिय",
@@ -5721,48 +5707,6 @@
    "tr": "Bekliyor…",
    "it": "In attesa…"
   },
-  "On": {
-   "zh-Hans": "开",
-   "hi": "चालू",
-   "es": "Encendido",
-   "ar": "مشغّل",
-   "fr": "Allumé",
-   "bn": "চালু",
-   "pt-BR": "Ligado",
-   "ru": "Вкл.",
-   "id": "Nyala",
-   "de": "An",
-   "tr": "Açık",
-   "it": "Acceso"
-  },
-  "Activate": {
-   "zh-Hans": "激活",
-   "hi": "सक्रिय करें",
-   "es": "Activar",
-   "ar": "تفعيل",
-   "fr": "Activer",
-   "bn": "সক্রিয় করো",
-   "pt-BR": "Ativar",
-   "ru": "Включить",
-   "id": "Aktifkan",
-   "de": "Aktivieren",
-   "tr": "Etkinleştir",
-   "it": "Attiva"
-  },
-  "Toggle": {
-   "zh-Hans": "切换",
-   "hi": "टॉगल",
-   "es": "Alternar",
-   "ar": "تبديل",
-   "fr": "Basculer",
-   "bn": "টগল",
-   "pt-BR": "Alternar",
-   "ru": "Переключить",
-   "id": "Alihkan",
-   "de": "Umschalten",
-   "tr": "Aç/Kapat",
-   "it": "Accendi/spegni"
-  },
   "{n} lights on": {
    "zh-Hans": "{n} 盏灯亮着",
    "hi": "{n} लाइट चालू",
@@ -5776,20 +5720,6 @@
    "de": "{n} Lampen an",
    "tr": "{n} ışık açık",
    "it": "{n} luci accese"
-  },
-  "A long-lived access token from your Home Assistant profile → Security. The entities listed show on the card with their state; lights, switches and fans get a toggle, scenes a button. Alarm panels, updates, problem sensors and persistent notifications are always shown.": {
-   "zh-Hans": "来自 Home Assistant 个人资料 → 安全 的长期访问令牌。列出的实体会连同状态显示在卡片上；灯、开关和风扇有切换按钮，场景有激活按钮。警报面板、更新、问题传感器和持久通知始终显示。",
-   "hi": "आपकी Home Assistant प्रोफ़ाइल → सुरक्षा से एक लंबी अवधि का एक्सेस टोकन। सूचीबद्ध एंटिटी अपनी स्थिति के साथ कार्ड पर दिखती हैं; लाइट, स्विच और पंखे को टॉगल मिलता है, सीन को एक बटन। अलार्म पैनल, अपडेट, समस्या सेंसर और स्थायी सूचनाएँ हमेशा दिखती हैं।",
-   "es": "Un token de acceso de larga duración desde tu perfil de Home Assistant → Seguridad. Las entidades listadas aparecen en la tarjeta con su estado; luces, interruptores y ventiladores tienen un conmutador, las escenas un botón. Los paneles de alarma, las actualizaciones, los sensores de problemas y las notificaciones persistentes se muestran siempre.",
-   "ar": "رمز وصول طويل الأمد من ملفك الشخصي في Home Assistant ← الأمان. تظهر الكيانات المدرجة على البطاقة مع حالتها؛ للأضواء والمفاتيح والمراوح زر تبديل، وللمشاهد زر تفعيل. لوحات الإنذار والتحديثات ومستشعرات المشكلات والإشعارات الدائمة تظهر دائمًا.",
-   "fr": "Un jeton d'accès longue durée depuis ton profil Home Assistant → Sécurité. Les entités listées s'affichent sur la carte avec leur état ; lumières, interrupteurs et ventilateurs ont un bouton bascule, les scènes un bouton. Les centrales d'alarme, les mises à jour, les capteurs de problème et les notifications persistantes sont toujours affichés.",
-   "bn": "আপনার Home Assistant প্রোফাইল → নিরাপত্তা থেকে একটি দীর্ঘমেয়াদী অ্যাক্সেস টোকেন। তালিকার এনটিটিগুলি তাদের অবস্থা সহ কার্ডে দেখায়; লাইট, সুইচ ও ফ্যানে টগল থাকে, সিনে একটি বোতাম। অ্যালার্ম প্যানেল, আপডেট, সমস্যা সেন্সর ও স্থায়ী বিজ্ঞপ্তি সবসময় দেখানো হয়।",
-   "pt-BR": "Um token de acesso de longa duração do seu perfil do Home Assistant → Segurança. As entidades listadas aparecem no cartão com seu estado; luzes, interruptores e ventiladores ganham um alternador, cenas um botão. Painéis de alarme, atualizações, sensores de problema e notificações persistentes aparecem sempre.",
-   "ru": "Долгосрочный токен доступа из профиля Home Assistant → Безопасность. Перечисленные сущности показываются на карточке с их состоянием; у ламп, выключателей и вентиляторов есть переключатель, у сцен — кнопка. Панели сигнализации, обновления, датчики проблем и постоянные уведомления показываются всегда.",
-   "id": "Token akses jangka panjang dari profil Home Assistant → Keamanan. Entitas yang dicantumkan tampil di kartu dengan statusnya; lampu, sakelar, dan kipas mendapat tombol alih, scene mendapat tombol. Panel alarm, pembaruan, sensor masalah, dan notifikasi persisten selalu ditampilkan.",
-   "de": "Ein langlebiges Zugriffstoken aus deinem Home-Assistant-Profil → Sicherheit. Die aufgelisteten Entitäten erscheinen mit ihrem Zustand auf der Karte; Lampen, Schalter und Ventilatoren bekommen einen Umschalter, Szenen einen Knopf. Alarmanlagen, Updates, Problemsensoren und dauerhafte Benachrichtigungen werden immer angezeigt.",
-   "tr": "Home Assistant profilin → Güvenlik bölümünden uzun ömürlü bir erişim belirteci. Listelenen varlıklar durumlarıyla kartta görünür; ışıklar, anahtarlar ve fanlar bir açma/kapama düğmesi, sahneler bir buton alır. Alarm panelleri, güncellemeler, sorun sensörleri ve kalıcı bildirimler her zaman gösterilir.",
-   "it": "Un token di accesso a lunga durata dal tuo profilo Home Assistant → Sicurezza. Le entità elencate compaiono sulla scheda con il loro stato; luci, interruttori e ventole hanno un interruttore, le scene un pulsante. Centrali d'allarme, aggiornamenti, sensori di problemi e notifiche persistenti sono sempre mostrati."
   },
   "Notification": {
    "zh-Hans": "通知",
@@ -5874,6 +5804,20 @@
    "de": "Instanz {n}",
    "tr": "Örnek {n}",
    "it": "Impianto {n}"
+  },
+  "A long-lived access token from your Home Assistant profile → Security. The card shows the persistent notifications, the alarm panels, the updates waiting, the problem sensors and how many lights are on, as they change.": {
+   "zh-Hans": "来自 Home Assistant 个人资料 → 安全 的长期访问令牌。卡片会实时显示持久通知、警报面板、待安装的更新、问题传感器以及亮着的灯的数量。",
+   "hi": "आपकी Home Assistant प्रोफ़ाइल → सुरक्षा से एक लंबी अवधि का एक्सेस टोकन। कार्ड पर स्थायी सूचनाएँ, अलार्म पैनल, प्रतीक्षित अपडेट, समस्या सेंसर और कितनी लाइट चालू हैं, बदलते ही दिखते हैं।",
+   "es": "Un token de acceso de larga duración desde tu perfil de Home Assistant → Seguridad. La tarjeta muestra las notificaciones persistentes, los paneles de alarma, las actualizaciones pendientes, los sensores de problemas y cuántas luces están encendidas, según cambian.",
+   "ar": "رمز وصول طويل الأمد من ملفك الشخصي في Home Assistant ← الأمان. تعرض البطاقة الإشعارات الدائمة ولوحات الإنذار والتحديثات المنتظرة ومستشعرات المشكلات وعدد الأضواء المشغّلة، لحظة تغيّرها.",
+   "fr": "Un jeton d'accès longue durée depuis ton profil Home Assistant → Sécurité. La carte affiche les notifications persistantes, les centrales d'alarme, les mises à jour en attente, les capteurs de problème et le nombre de lumières allumées, au fil des changements.",
+   "bn": "আপনার Home Assistant প্রোফাইল → নিরাপত্তা থেকে একটি দীর্ঘমেয়াদী অ্যাক্সেস টোকেন। কার্ডে স্থায়ী বিজ্ঞপ্তি, অ্যালার্ম প্যানেল, অপেক্ষমাণ আপডেট, সমস্যা সেন্সর এবং কতগুলি লাইট চালু আছে, বদলানোর সঙ্গে সঙ্গে দেখায়।",
+   "pt-BR": "Um token de acesso de longa duração do seu perfil do Home Assistant → Segurança. O cartão mostra as notificações persistentes, os painéis de alarme, as atualizações pendentes, os sensores de problema e quantas luzes estão acesas, conforme mudam.",
+   "ru": "Долгосрочный токен доступа из профиля Home Assistant → Безопасность. Карточка показывает постоянные уведомления, панели сигнализации, ожидающие обновления, датчики проблем и число включённых ламп, по мере изменений.",
+   "id": "Token akses jangka panjang dari profil Home Assistant → Keamanan. Kartu menampilkan notifikasi persisten, panel alarm, pembaruan yang menunggu, sensor masalah, dan berapa lampu yang menyala, saat berubah.",
+   "de": "Ein langlebiges Zugriffstoken aus deinem Home-Assistant-Profil → Sicherheit. Die Karte zeigt die dauerhaften Benachrichtigungen, die Alarmanlagen, die wartenden Updates, die Problemsensoren und wie viele Lampen an sind, sobald sich etwas ändert.",
+   "tr": "Home Assistant profilin → Güvenlik bölümünden uzun ömürlü bir erişim belirteci. Kart kalıcı bildirimleri, alarm panellerini, bekleyen güncellemeleri, sorun sensörlerini ve kaç ışığın açık olduğunu, değiştikçe gösterir.",
+   "it": "Un token di accesso a lunga durata dal tuo profilo Home Assistant → Sicurezza. La scheda mostra le notifiche persistenti, le centrali d'allarme, gli aggiornamenti in attesa, i sensori di problemi e quante luci sono accese, man mano che cambiano."
   }
  }
 }

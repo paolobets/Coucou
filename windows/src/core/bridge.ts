@@ -358,9 +358,6 @@ export const Bridge = {
   openN8n: () => call<void>("open_n8n"),
   /** Opens one configured Home Assistant instance (1 to 4) in the browser. */
   openHomeAssistant: (slot: number) => call<void>("open_homeassistant", { slot }),
-  /** A toggle or a scene from the Home Assistant card (Rust keeps the list of what may be called). */
-  homeAssistantCallService: (slot: number, domain: string, service: string, entityId: string) =>
-    callOrThrow<void>("homeassistant_call_service", { slot, domain, service, entityId }),
   /** The ✕ on a persistent notification in the Home Assistant card. */
   homeAssistantDismiss: (slot: number, id: string) =>
     callOrThrow<void>("homeassistant_dismiss_notification", { slot, id }),

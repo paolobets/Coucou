@@ -1,8 +1,8 @@
 // Home Assistant — the Rust side of the `integration_homeassistant` pill.
 //
-// Up to four instances ("slots"), each with its address, a long-lived access
-// token and the entity ids to watch, all in the Credential Manager / Secret
-// Service like the other integrations (secrets.rs). Each configured slot keeps
+// Up to four instances ("slots"), each with its address and a long-lived
+// access token, both in the Credential Manager / Secret Service like the
+// other integrations (secrets.rs). Each configured slot keeps
 // one WebSocket open to `/api/websocket`: it authenticates, loads the states
 // and the house's config once, then subscribes to `state_changed` and to the
 // persistent notifications, which are not entities any more and exist only on
@@ -12,8 +12,8 @@
 // notification arrives. The first snapshot of a connection is quiet, like the
 // other pollers' first poll.
 //
-// Writes go through REST, one at a time, from a click on the card: a toggle or
-// a scene from a short list, and dismissing a notification. Nothing else.
+// The one write goes through REST, from a click on the card: dismissing a
+// notification. Nothing else touches the house.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::atomic::Ordering;
@@ -41,18 +41,6 @@ pub const PILL: &str = "integration_homeassistant";
 /// How many instances Settings → Integrations offers.
 pub const SLOTS: usize = 4;
 
-/// `(domain, service)` pairs the card may call, each on an entity of its own
-/// domain. Toggles and scenes only: nothing that arms, unlocks or opens.
-const SERVICES: [(&str, &str); 5] = [
-    ("light", "toggle"),
-    ("switch", "toggle"),
-    ("input_boolean", "toggle"),
-    ("fan", "toggle"),
-    ("scene", "turn_on"),
-];
-
-/// Entities listed in Settings beyond this many are ignored.
-const MAX_WATCHED: usize = 12;
 /// Snapshots are sent to the island at most this often per instance.
 const COALESCE: Duration = Duration::from_millis(400);
 /// Without any frame from Home Assistant for this long, the socket is reopened.
@@ -63,7 +51,7 @@ const RETRY_MAX: Duration = Duration::from_secs(60);
 
 // ── Settings ──────────────────────────────────────────────────────────────────
 
-/// The Credential Manager key of `what` ("url", "token", "entities") for a slot:
+/// The Credential Manager key of `what` ("url" or "token") for a slot:
 /// the first slot keeps the keys the pill shipped with.
 pub fn key(slot: usize, what: &str) -> String {
     if slot <= 1 { format!("homeassistant-{what}") } else { format!("homeassistant-{slot}-{what}") }
@@ -71,7 +59,7 @@ pub fn key(slot: usize, what: &str) -> String {
 
 /// Every key the pill may store, for secrets::KNOWN_KEYS.
 pub fn known_keys() -> Vec<String> {
-    (1..=SLOTS).flat_map(|slot| ["url", "token", "entities"].map(|what| key(slot, what))).collect()
+    (1..=SLOTS).flat_map(|slot| ["url", "token"].map(|what| key(slot, what))).collect()
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -80,7 +68,6 @@ pub struct Config {
     /// The address as stored, trimmed, without a trailing slash: http(s) only.
     pub base: String,
     pub token: String,
-    pub watched: Vec<String>,
 }
 
 /// The address as stored, only if it is http(s) and has a host.
@@ -91,35 +78,10 @@ pub fn base_url(raw: &str) -> Option<String> {
     (!host.is_empty() && !host.contains('@')).then_some(base)
 }
 
-/// An entity id as Home Assistant spells them: `domain.object_id`, lowercase
-/// letters, digits and underscores. Anything else is refused before it reaches
-/// a URL or a request body.
-pub fn valid_entity_id(id: &str) -> bool {
-    let Some((domain, object)) = id.split_once('.') else { return false };
-    let ok = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_');
-    ok(domain) && ok(object)
-}
-
-/// The entity ids of a Settings field, one per line, comma or space, invalid ones dropped.
-pub fn parse_watched(raw: &str) -> Vec<String> {
-    let mut out: Vec<String> = Vec::new();
-    for part in raw.split(|c: char| c == ',' || c == ';' || c.is_whitespace()) {
-        let id = part.trim();
-        if valid_entity_id(id) && !out.iter().any(|o| o == id) {
-            out.push(id.to_string());
-        }
-        if out.len() == MAX_WATCHED {
-            break;
-        }
-    }
-    out
-}
-
 fn config(slot: usize) -> Option<Config> {
     let base = base_url(&secrets::get(&key(slot, "url"))?)?;
     let token = secrets::get(&key(slot, "token"))?;
-    let watched = parse_watched(&secrets::get(&key(slot, "entities")).unwrap_or_default());
-    Some(Config { slot, base, token, watched })
+    Some(Config { slot, base, token })
 }
 
 // ── What each instance knows ──────────────────────────────────────────────────
@@ -172,12 +134,11 @@ struct Snapshot {
     event: Option<IntegrationEvent>,
 }
 
-fn snapshot(instance: &mut Instance, slot: usize, watched: &[String]) -> Snapshot {
+fn snapshot(instance: &mut Instance, slot: usize) -> Snapshot {
     let mut alarms: Vec<Value> = Vec::new();
     let mut updates: Vec<String> = Vec::new();
     let mut problems: Vec<String> = Vec::new();
     let mut lights_on = 0u32;
-    let mut rows: Vec<(usize, Value)> = Vec::new();
     let mut triggered: HashSet<String> = HashSet::new();
 
     let mut ids: Vec<&String> = instance.states.keys().collect();
@@ -203,20 +164,7 @@ fn snapshot(instance: &mut Instance, slot: usize, watched: &[String]) -> Snapsho
             "light" if state == "on" => lights_on += 1,
             _ => {}
         }
-        if let Some(position) = watched.iter().position(|w| w == id) {
-            rows.push((position, json!({
-                "entityId": id,
-                "name": name,
-                "state": state,
-                "unit": attr(entity, "unit_of_measurement").and_then(Value::as_str),
-                "domain": domain,
-                // The card shows a button only for a service the list above allows.
-                "action": SERVICES.iter().find(|(d, _)| *d == domain).map(|(_, s)| *s),
-            })));
-        }
     }
-    // Settings order, not Home Assistant's.
-    rows.sort_by_key(|(position, _)| *position);
     updates.sort();
     updates.dedup();
 
@@ -304,7 +252,6 @@ fn snapshot(instance: &mut Instance, slot: usize, watched: &[String]) -> Snapsho
             "updates": updates,
             "problems": problems,
             "lightsOn": lights_on,
-            "watched": rows.into_iter().map(|(_, row)| row).collect::<Vec<_>>(),
             "notifications": notifications,
         }),
         event,
@@ -324,7 +271,7 @@ fn emit(app: &AppHandle, slot: usize) {
     let mut error = None;
     for cfg in &configs {
         let instance = &mut instances[cfg.slot - 1];
-        let snap = snapshot(instance, cfg.slot, &cfg.watched);
+        let snap = snapshot(instance, cfg.slot);
         if cfg.slot == slot {
             event = snap.event;
         }
@@ -672,20 +619,6 @@ async fn post(cfg: &Config, path: &str, body: Value) -> Result<(), String> {
     Ok(())
 }
 
-/// `domain.service` on one entity of that domain, from the short list in
-/// `SERVICES`. The state that follows arrives on the socket, so the card shows
-/// what Home Assistant says happened, not what was asked.
-pub async fn call_service(slot: usize, domain: String, service: String, entity_id: String) -> Result<(), String> {
-    if !SERVICES.iter().any(|(d, s)| *d == domain && *s == service) {
-        return Err(format!("{domain}.{service} is not a service the card may call"));
-    }
-    if !valid_entity_id(&entity_id) || !entity_id.starts_with(&format!("{domain}.")) {
-        return Err(format!("{entity_id} is not an entity of {domain}"));
-    }
-    let cfg = config(slot).ok_or_else(|| crate::i18n::t("Key not configured"))?;
-    post(&cfg, &format!("/api/services/{domain}/{service}"), json!({ "entity_id": entity_id })).await
-}
-
 /// Dismisses one persistent notification; the subscription reports the removal.
 pub async fn dismiss_notification(slot: usize, id: String) -> Result<(), String> {
     if id.is_empty() || id.len() > 200 || id.chars().any(|c| c.is_control()) {
@@ -711,7 +644,7 @@ mod tests {
     fn keys_keep_the_first_slot_as_shipped() {
         assert_eq!(key(1, "url"), "homeassistant-url");
         assert_eq!(key(2, "token"), "homeassistant-2-token");
-        assert_eq!(known_keys().len(), SLOTS * 3);
+        assert_eq!(known_keys().len(), SLOTS * 2);
     }
 
     #[test]
@@ -732,14 +665,6 @@ mod tests {
         assert_eq!(endpoint("http://[fe80::1]:8123"), Some((false, "[fe80::1]".into(), 8123, "/api/websocket".into())));
     }
 
-    #[test]
-    fn watched_entities_are_validated_and_capped() {
-        let parsed = parse_watched("light.kitchen, sensor.power\nscene.movie; Light.Bad light.kitchen rm -rf");
-        assert_eq!(parsed, vec!["light.kitchen", "sensor.power", "scene.movie"]);
-        let many: Vec<String> = (0..20).map(|i| format!("sensor.s{i}")).collect();
-        assert_eq!(parse_watched(&many.join(",")).len(), MAX_WATCHED);
-    }
-
     fn entity(id: &str, state: &str, attrs: Value) -> (String, Value) {
         (id.to_string(), json!({ "entity_id": id, "state": state, "attributes": attrs }))
     }
@@ -756,9 +681,8 @@ mod tests {
             entity("sensor.power", "412", json!({ "unit_of_measurement": "W", "friendly_name": "Power" })),
         ]);
         instance.notifications.insert("n1".into(), json!({ "title": "Backup done", "message": "ok", "created_at": "2026-10-20T06:00:00Z" }));
-        let watched = vec!["sensor.power".to_string(), "light.kitchen".to_string()];
 
-        let first = snapshot(&mut instance, 1, &watched);
+        let first = snapshot(&mut instance, 1);
         assert!(first.event.is_none(), "the first snapshot is quiet");
         let d = &first.data;
         assert_eq!(d["name"], "Casa");
@@ -766,26 +690,22 @@ mod tests {
         assert_eq!(d["updates"], json!(["Core 2026.10"]));
         assert_eq!(d["problems"], json!(["Boiler"]));
         assert_eq!(d["alarms"][0]["state"], "disarmed");
-        assert_eq!(d["watched"][0]["entityId"], "sensor.power");
-        assert_eq!(d["watched"][0]["unit"], "W");
-        assert_eq!(d["watched"][0]["action"], Value::Null);
-        assert_eq!(d["watched"][1]["action"], "toggle");
         assert_eq!(d["notifications"][0]["title"], "Backup done");
 
         // An alarm going off beats everything else.
         instance.states.insert("alarm_control_panel.home".into(), entity("alarm_control_panel.home", "triggered", json!({ "friendly_name": "Home" })).1);
         instance.notifications.insert("n2".into(), json!({ "title": "Door", "message": "open" }));
-        let second = snapshot(&mut instance, 1, &watched);
+        let second = snapshot(&mut instance, 1);
         let event = second.event.expect("an alarm event");
         assert!(!event.success);
         assert_eq!(event.detail.as_deref(), Some("Home"));
 
         // Nothing new: nothing said.
-        assert!(snapshot(&mut instance, 1, &watched).event.is_none());
+        assert!(snapshot(&mut instance, 1).event.is_none());
 
         // A notification alone is a happy event with its title and message.
         instance.notifications.insert("n3".into(), json!({ "title": "Washer", "message": "Cycle finished" }));
-        let third = snapshot(&mut instance, 1, &watched);
+        let third = snapshot(&mut instance, 1);
         let event = third.event.expect("a notification event");
         assert!(event.success);
         assert_eq!(event.label, "Washer");
@@ -793,11 +713,9 @@ mod tests {
     }
 
     #[test]
-    fn only_the_short_list_of_services_is_accepted() {
+    fn a_bad_notification_id_never_reaches_the_network() {
         let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
-        assert!(rt.block_on(call_service(1, "lock".into(), "unlock".into(), "lock.door".into())).is_err());
-        assert!(rt.block_on(call_service(1, "light".into(), "toggle".into(), "switch.plug".into())).is_err());
-        assert!(rt.block_on(call_service(1, "light".into(), "toggle".into(), "light.ok; rm".into())).is_err());
         assert!(rt.block_on(dismiss_notification(1, "".into())).is_err());
+        assert!(rt.block_on(dismiss_notification(1, "a\nb".into())).is_err());
     }
 }
