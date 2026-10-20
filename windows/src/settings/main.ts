@@ -876,19 +876,23 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       // after a click on the button, one slot at a time.
       const blocks: HTMLElement[] = [];
       const more = h("button", { text: t("Add another Home Assistant") });
+      // Shown or hidden through `display`, not `hidden`: the block's own
+      // inline `display:flex` would win over the attribute.
+      const shown = (b: HTMLElement) => b.style.display !== "none";
+      const show = (b: HTMLElement, on: boolean) => { b.style.display = on ? "flex" : "none"; };
       for (let slot = 2; slot <= HA_SLOTS; slot++) {
-        const block = h("div", { style: "display:flex;flex-direction:column;gap:6px;padding-top:6px" },
+        const block = h("div", { style: "flex-direction:column;gap:6px;padding-top:6px" },
           h("div", { class: "hint", text: t("Instance {n}", { n: slot }) }),
           ...haFields(slot).map(fieldRow),
         );
-        block.hidden = !present[haKey(slot, "url")];
+        show(block, present[haKey(slot, "url")] ?? false);
         blocks.push(block);
         rows.append(block);
       }
-      const refresh = () => { more.hidden = blocks.every((b) => !b.hidden); };
+      const refresh = () => { more.hidden = blocks.every(shown); };
       more.addEventListener("click", () => {
-        const next = blocks.find((b) => b.hidden);
-        if (next) next.hidden = false;
+        const next = blocks.find((b) => !shown(b));
+        if (next) show(next, true);
         refresh();
       });
       refresh();
