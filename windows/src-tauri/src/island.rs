@@ -18,8 +18,8 @@ use crate::platform::{self, cursor_physical, left_button_down};
 pub const PANEL_W: f64 = 720.0;
 pub const PANEL_H: f64 = 320.0;
 /// Logical size of the invisible strip that wakes the island when it is hidden.
-pub const STRIP_W: f64 = 240.0;
-pub const STRIP_H: f64 = 6.0;
+pub const STRIP_W: f64 = 360.0;
+pub const STRIP_H: f64 = 10.0;
 
 pub const WINDOW_LABEL: &str = "island";
 
@@ -438,17 +438,41 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             // looked at every two seconds: a monitor unplugged, a scale changed
             // or the preference saved meanwhile would leave the wake strip where
             // the screen used to be, and an island nobody can reach by hovering.
-            while !gate.wait_until_active_for(Duration::from_secs(2)) {
-                let now = current_screen_key(&app);
-                if now.is_some() && now != last_screen {
-                    let first = last_screen.is_none();
-                    last_screen = now;
-                    if !first && gate.collapsed.load(Ordering::Relaxed) {
-                        crate::log::line("display layout changed while hidden — moving the wake strip".to_string());
-                        apply_geometry(&app, &screen_pref(&app), true);
-                        refresh_click_through(&app, &gate);
+            // While hidden, the pointer is read five times a second (one
+            // GetCursorPos): the webview does not always get a mouseenter on a
+            // 10 px strip, a fast pointer or a window in front can eat it, so
+            // the cursor resting on the strip wakes the island from here too.
+            let mut parked_ticks: u32 = 0;
+            let mut over_strip = false;
+            while !gate.wait_until_active_for(Duration::from_millis(200)) {
+                parked_ticks = parked_ticks.wrapping_add(1);
+                if parked_ticks % 10 == 0 {
+                    let now = current_screen_key(&app);
+                    if now.is_some() && now != last_screen {
+                        let first = last_screen.is_none();
+                        last_screen = now;
+                        if !first && gate.collapsed.load(Ordering::Relaxed) {
+                            crate::log::line("display layout changed while hidden — moving the wake strip".to_string());
+                            apply_geometry(&app, &screen_pref(&app), true);
+                            refresh_click_through(&app, &gate);
+                        }
                     }
                 }
+                if !gate.collapsed.load(Ordering::Relaxed) {
+                    continue;
+                }
+                let Some(win) = window(&app) else { continue };
+                let (Ok(origin), Ok(size), Some((cx, cy))) = (win.outer_position(), win.inner_size(), cursor_physical()) else {
+                    continue;
+                };
+                let inside = cx >= origin.x as f64
+                    && cx < (origin.x + size.width as i32) as f64
+                    && cy >= origin.y as f64
+                    && cy < (origin.y + size.height as i32) as f64;
+                if inside && !over_strip {
+                    let _ = app.emit_to(WINDOW_LABEL, "wake-strip", ());
+                }
+                over_strip = inside;
             }
             let mut last = (f64::MIN, f64::MIN);
             let mut ticks: u32 = 0;

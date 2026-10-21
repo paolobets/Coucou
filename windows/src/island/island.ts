@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, onEvent } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -734,6 +734,11 @@ export class Island {
     // The wake strip is the only thing the OS can hit while the island is hidden.
     this.wakeStrip.addEventListener("mouseenter", () => {
       Sound.resume();
+      if (State.mode === "hidden") this.fsm.mouseEntered();
+    });
+    // Rust saw the pointer on the strip (island.rs): same wake, for the times
+    // the webview gets no mouseenter.
+    void onEvent<null>("wake-strip", () => {
       if (State.mode === "hidden") this.fsm.mouseEntered();
     });
 
