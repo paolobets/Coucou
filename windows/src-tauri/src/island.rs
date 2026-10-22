@@ -390,6 +390,14 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     // re-applies the config's `resizable: false` after the first configure, so
     // this is asked every time, just before the resize. Undecorated, the window
     // still offers the user nothing to resize it by. (Found by @YossiYad, #44.)
+    // Already there (waking at full size on Windows): touching the window
+    // anyway would only make it lay out and repaint for nothing.
+    if let (Ok(pos), Ok(size)) = (win.outer_position(), win.inner_size()) {
+        if pos.x == x && pos.y == y && size.width == pw && size.height == ph {
+            return;
+        }
+    }
+
     #[cfg(target_os = "linux")]
     let _ = win.set_resizable(true);
     let _ = win.set_size(PhysicalSize::new(pw, ph));
@@ -605,12 +613,20 @@ mod wake_strip_tests {
 /// the island itself, or to the whole wake strip while collapsed.
 pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
     if platform::CURSOR_POLL {
-        if gate.collapsed.load(Ordering::Relaxed) && !SHRINK_WHEN_HIDDEN {
-            // Hidden at full size: nothing of the window may take a click
-            // meant for what sits under the top of the screen. The parked
-            // poll wakes the island from the cursor instead.
-            set_ignore_cursor(app, true);
-            gate.ignoring.store(true, Ordering::Relaxed);
+        if !SHRINK_WHEN_HIDDEN {
+            // The window never changes size here, so its flag is still right
+            // and `ignoring` still says what it is. Hidden: nothing of it may
+            // take a click meant for what sits under the top of the screen
+            // (the parked poll wakes the island from the cursor). Waking: the
+            // poll's next tick decides from the cursor. Forcing "take the
+            // mouse" first, as below, would flip the flag twice when the
+            // pointer is elsewhere (a notification): each flip makes tao add
+            // or drop WS_EX_LAYERED and refresh the frame, and the window
+            // repaints blank for a frame in the middle of the animation.
+            if gate.collapsed.load(Ordering::Relaxed) && !gate.ignoring.load(Ordering::Relaxed) {
+                set_ignore_cursor(app, true);
+                gate.ignoring.store(true, Ordering::Relaxed);
+            }
             return;
         }
         set_ignore_cursor(app, false);
