@@ -652,15 +652,23 @@ function buildError(actions: ViewActions): ViewHost {
   const who = h("div");
   const title = h("div", { class: "title" });
   const detail = h("div", { class: "detail" });
+  // As on the Mac (ErrorView): where the session lives, then OK. The n8n
+  // button used to show for every session and opened nothing.
+  const open = btn(tl("Open terminal"), "primary", () => actions.openTerminal());
   const row = h("div", { class: "actions" },
-    btn(tl("Retry"), "primary", () => actions.setView(State.defaultView())),
-    btn(tl("Open in n8n"), "secondary", () => actions.openUrl("")),
+    open,
+    btn(tl("OK"), "secondary", () => actions.collapse()),
   );
   const el = h("div", { class: "view" }, card("red", stack(116, 16, who, title, detail, row)));
   return {
     el,
     sync() {
       const task = State.focusTask;
+      // A workflow has no terminal; the Claude desktop app is its own window.
+      open.style.display = task?.source === "n8n" ? "none" : "";
+      const label = task?.id === "agent_claude-desktop" ? t("Open Claude") : t("Open terminal");
+      const span = open.firstElementChild as HTMLElement;
+      if (span.textContent !== label) span.textContent = label;
       clear(who);
       // agentWho already shows an agent's name: its label is just the kind.
       const whoLabel = task?.source === "n8n" ? "n8n" : task?.source === "agent" ? t("Agent") : "Claude Code";

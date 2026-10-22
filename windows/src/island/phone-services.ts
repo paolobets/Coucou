@@ -7,7 +7,7 @@
 
 import type { PhoneLinkService } from "../core/bridge";
 import { State } from "../core/state";
-import { t } from "../i18n/i18n";
+import { t, tn } from "../i18n/i18n";
 
 const obj = (id: string): Record<string, unknown> => (State.integrations[id]?.data ?? {}) as Record<string, unknown>;
 const list = (id: string, key: string): Record<string, unknown>[] => {
@@ -115,11 +115,11 @@ const BUILDERS: Record<string, Builder> = {
     const headline = triggered
       ? t("Alarm triggered")
       : notifications > 0
-        ? t("{n} notifications", { n: notifications })
+        ? tn("{count} notification", "{count} notifications", notifications)
         : updates > 0
-          ? t("{n} updates available", { n: updates })
+          ? tn("{count} update available", "{count} updates available", updates)
           : problems > 0
-            ? t("{n} problems", { n: problems })
+            ? tn("{count} problem", "{count} problems", problems)
             : t("All quiet");
     const first = instances[0] ?? {};
     const items: { label: string; detail: string }[] = [];
@@ -135,7 +135,7 @@ const BUILDERS: Record<string, Builder> = {
     return {
       id: "integration_homeassistant", title: "Home Assistant",
       headline,
-      reason: instances.length > 1 ? t("{n} houses", { n: instances.length }) : typeof first.name === "string" && first.name ? first.name : t("Home"),
+      reason: instances.length > 1 ? tn("{count} house", "{count} houses", instances.length) : typeof first.name === "string" && first.name ? first.name : t("Home"),
       items: items.slice(0, 3),
     };
   },

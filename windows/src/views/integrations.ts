@@ -12,7 +12,7 @@ import { isComingSoon, pillDefinition } from "../core/pills";
 import { refreshHookPills } from "../island/integrations";
 import { readActivity, readPulse, readStats } from "../core/github";
 import { githubDetail, githubPulseCard } from "./github";
-import { N_, language, t } from "../i18n/i18n";
+import { N_, language, t, tn } from "../i18n/i18n";
 
 /** Same shape as the Swift `timeAgo` computed properties. */
 export function timeAgo(value: unknown): string {
@@ -26,7 +26,7 @@ export function timeAgo(value: unknown): string {
 }
 
 function header(color: string, name: string, kind: string, extra?: Node): HTMLElement {
-  const row = h("div", { class: "int-head" }, dot(color, 7), h("b", { text: name }), h("span", { text: kind }));
+  const row = h("div", { class: "int-head" }, dot(color, 7), h("b", { text: name }), kind ? h("span", { text: kind }) : null);
   if (extra) row.append(extra);
   return row;
 }
@@ -407,71 +407,83 @@ export function homeassistantInstances(): Record<string, unknown>[] {
   return arr("integration_homeassistant", "instances");
 }
 
-function homeassistantSection(inst: Record<string, unknown>, several: boolean): Node[] {
+/** Rows a list card shows under its header before its bottom edge cuts them. */
+const CARD_ROWS = 3;
+
+/** A row's value in words, right-aligned (an alarm state, a reason). */
+function rowNote(text: string, color: string, title?: string): HTMLElement {
+  return h("span", { class: "int-note", style: `color:${color}`, title: title ?? text, text });
+}
+
+/** What a house has waiting, in one short line (several houses, one row each). */
+function homeassistantSummary(inst: Record<string, unknown>): { text: string; color: string } {
+  const len = (key: string) => (Array.isArray(inst[key]) ? (inst[key] as unknown[]).length : 0);
+  if (inst.connected !== true) return { text: String(inst.error ?? t("Not connected")), color: "#F4505E" };
+  const alarms = Array.isArray(inst.alarms) ? (inst.alarms as Record<string, unknown>[]) : [];
+  if (alarms.some((a) => a.state === "triggered")) return { text: t("Alarm triggered"), color: "#F4505E" };
+  if (len("notifications") > 0) return { text: tn("{count} notification", "{count} notifications", len("notifications")), color: "#F5A524" };
+  if (len("problems") > 0) return { text: tn("{count} problem", "{count} problems", len("problems")), color: "#F4505E" };
+  if (len("updates") > 0) return { text: tn("{count} update available", "{count} updates available", len("updates")), color: "#F5A524" };
+  const armed = alarms.find((a) => a.state !== "disarmed");
+  if (armed) return { text: alarmLabel(String(armed.state ?? "")), color: "#22C55E" };
+  return { text: t("All quiet"), color: "#22C55E" };
+}
+
+function notificationRow(slot: number, n: Record<string, unknown>, house?: string): HTMLElement {
+  const id = String(n.id ?? "");
+  const title = typeof n.title === "string" && n.title ? n.title : t("Notification");
+  const message = typeof n.message === "string" ? n.message : "";
+  const text = [house, title, message].filter(Boolean).join(" · ");
+  const row = listRow("#F5A524", false, h("span", { class: "int-name", title: text, text }));
+  const dismiss = h("button", { class: "link-btn", style: "color:#F5A524d9;margin-left:auto;flex:0 0 auto", text: t("Dismiss") });
+  dismiss.addEventListener("click", async () => {
+    dismiss.setAttribute("disabled", "");
+    try {
+      await Bridge.homeAssistantDismiss(slot, id);
+    } catch (err) {
+      dismiss.textContent = String(err);
+    }
+  });
+  row.append(dismiss);
+  return row;
+}
+
+/** One house: what waits, most urgent first, as many rows as the card holds. */
+function homeassistantRows(inst: Record<string, unknown>): HTMLElement[] {
   const slot = typeof inst.slot === "number" ? inst.slot : 1;
   const list = (key: string) => (Array.isArray(inst[key]) ? (inst[key] as Record<string, unknown>[]) : []);
   const strings = (key: string) => (Array.isArray(inst[key]) ? (inst[key] as unknown[]).map(String) : []);
   const alarms = list("alarms");
-  const notifications = list("notifications");
   const updates = strings("updates");
   const problems = strings("problems");
-  const connected = inst.connected === true;
-  const name = typeof inst.name === "string" && inst.name ? inst.name : t("Instance {n}", { n: slot });
-  const out: Node[] = [];
-
-  if (several) {
-    // Each house gets a row of its own: its name, and a red dot with the reason when it is unreachable.
-    const accent = connected ? "#22C55E" : "#F4505E";
-    out.push(listRow(accent, true,
-      h("span", { class: "int-name", text: name }),
-      h("span", { class: "int-time", style: `color:${accent}`, text: connected ? "" : String(inst.error ?? t("Not connected")) }),
-    ));
-  } else if (!connected && inst.error) {
-    out.push(h("div", { class: "int-status", text: String(inst.error) }));
+  if (inst.connected !== true) {
+    return [listRow("#F4505E", false, h("span", { class: "int-name", text: String(inst.error ?? t("Not connected")) }))];
   }
-
-  for (const n of notifications.slice(0, 4)) {
-    const id = String(n.id ?? "");
-    const title = typeof n.title === "string" && n.title ? n.title : t("Notification");
-    const message = typeof n.message === "string" ? n.message : "";
-    const row = listRow("#F5A524", false,
-      h("span", { class: "int-name", title: message, text: message ? `${title} · ${message}` : title }),
-    );
-    const dismiss = h("button", { class: "link-btn", style: "color:#F5A524d9;margin-left:auto", text: t("Dismiss") });
-    dismiss.addEventListener("click", async () => {
-      dismiss.setAttribute("disabled", "");
-      try {
-        await Bridge.homeAssistantDismiss(slot, id);
-      } catch (err) {
-        dismiss.textContent = String(err);
-      }
-    });
-    row.append(dismiss);
-    out.push(row);
-  }
-  for (const a of alarms) {
+  const out: HTMLElement[] = [];
+  const alarmRow = (a: Record<string, unknown>) => {
     const triggered = a.state === "triggered";
     const accent = triggered ? "#F4505E" : a.state === "disarmed" ? "#6B7079" : "#22C55E";
-    out.push(listRow(accent, triggered,
+    return listRow(accent, triggered,
       h("span", { class: "int-name", text: String(a.name ?? "") }),
-      h("span", { class: "int-time", style: `color:${accent}`, text: alarmLabel(String(a.state ?? "")) }),
+      rowNote(alarmLabel(String(a.state ?? "")), accent),
+    );
+  };
+  for (const a of alarms.filter((a) => a.state === "triggered")) out.push(alarmRow(a));
+  for (const n of list("notifications")) out.push(notificationRow(slot, n));
+  for (const a of alarms.filter((a) => a.state !== "triggered")) out.push(alarmRow(a));
+  if (problems.length > 0) {
+    out.push(listRow("#F4505E", false,
+      h("span", { class: "int-name", text: tn("{count} problem", "{count} problems", problems.length) }),
+      rowNote(problems.slice(0, 2).join(", "), "#F4505E", problems.join(", ")),
     ));
   }
   if (updates.length > 0) {
     out.push(listRow("#F5A524", false,
-      h("span", { class: "int-name", text: t("{n} updates available", { n: updates.length }) }),
-      h("span", { class: "int-time", style: "color:#F5A524", text: updates.slice(0, 2).join(", ") }),
+      h("span", { class: "int-name", text: tn("{count} update available", "{count} updates available", updates.length) }),
+      rowNote(updates.slice(0, 2).join(", "), "#F5A524", updates.join(", ")),
     ));
   }
-  if (problems.length > 0) {
-    out.push(listRow("#F4505E", false,
-      h("span", { class: "int-name", text: t("{n} problems", { n: problems.length }) }),
-      h("span", { class: "int-time", style: "color:#F4505E", text: problems.slice(0, 2).join(", ") }),
-    ));
-  }
-  if (connected && notifications.length === 0 && alarms.length === 0 && updates.length === 0 && problems.length === 0) {
-    out.push(listRow("#22C55E", false, h("span", { class: "int-name", text: t("All quiet") })));
-  }
+  if (out.length === 0) out.push(listRow("#22C55E", false, h("span", { class: "int-name", text: t("All quiet") })));
   return out;
 }
 
@@ -482,9 +494,28 @@ function homeassistantCard(): HTMLElement {
   const name = !several && typeof first.name === "string" && first.name ? first.name : "Home Assistant";
   const lightsOn = instances.reduce((n, i) => n + (typeof i.lightsOn === "number" ? i.lightsOn : 0), 0);
   const rows = h("div", { class: "int-rows tight" });
-  for (const inst of instances) rows.append(...homeassistantSection(inst, several));
-  const extra = lightsOn > 0 ? h("span", { text: t("{n} lights on", { n: lightsOn }) }) : undefined;
-  return h("div", { class: "int-card" }, header(HA_BLUE, name, t("Home"), extra), rows);
+  let shown: HTMLElement[];
+  if (several) {
+    // A row per house with what it has waiting; the room left goes to the
+    // notifications, which can be dismissed from here.
+    shown = instances.slice(0, CARD_ROWS).map((inst) => {
+      const sum = homeassistantSummary(inst);
+      const label = typeof inst.name === "string" && inst.name ? inst.name : t("Instance {n}", { n: Number(inst.slot ?? 1) });
+      return listRow(sum.color, false, h("span", { class: "int-name", text: label }), rowNote(sum.text, sum.color));
+    });
+    for (const inst of instances) {
+      if (inst.connected !== true || !Array.isArray(inst.notifications)) continue;
+      const label = typeof inst.name === "string" && inst.name ? inst.name : undefined;
+      for (const n of inst.notifications as Record<string, unknown>[]) {
+        shown.push(notificationRow(typeof inst.slot === "number" ? inst.slot : 1, n, label));
+      }
+    }
+  } else {
+    shown = homeassistantRows(first);
+  }
+  rows.append(...shown.slice(0, CARD_ROWS));
+  const extra = lightsOn > 0 ? h("span", { text: tn("{count} light on", "{count} lights on", lightsOn) }) : undefined;
+  return h("div", { class: "int-card" }, header(HA_BLUE, name, extra ? "" : t("Home"), extra), rows);
 }
 
 // ── Whoop ─────────────────────────────────────────────────────────────────────
@@ -503,22 +534,30 @@ function whoopCard(): HTMLElement {
   const workout = (d.workout ?? null) as Record<string, unknown> | null;
   const strain = typeof d.strain === "number" ? d.strain : null;
   const rows = h("div", { class: "int-rows tight" });
+  const list: HTMLElement[] = [];
   const row = (accent: string, label: string, value: string, ago?: unknown) => {
     const r = listRow(accent, false,
       h("span", { class: "int-name", text: label }),
       h("span", { class: "int-time", style: `color:${accent}`, text: value }),
     );
-    if (ago) r.append(h("span", { class: "int-ago", text: timeAgo(ago) }));
-    rows.append(r);
+    if (ago) r.append(h("span", { class: "int-ago", style: "margin-left:auto", text: timeAgo(ago) }));
+    list.push(r);
   };
   let headline: HTMLElement;
   if (recovery && typeof recovery.score === "number") {
+    // The score, and beside it the two figures it comes from: one line, so
+    // the rows below keep their room.
     const score = Math.round(recovery.score);
     const color = recoveryColor(score);
-    headline = h("div", { class: "int-balance" }, h("span", { style: `color:${color}`, text: String(score) }), h("i", { text: "%" }));
-    const hrv = typeof recovery.hrv === "number" ? `${Math.round(recovery.hrv)} ms` : "";
-    const rhr = typeof recovery.rhr === "number" ? `${Math.round(recovery.rhr)} bpm` : "";
-    if (hrv || rhr) row(color, `${t("HRV")} · ${t("Resting heart rate")}`, [hrv, rhr].filter(Boolean).join(" · "), recovery.at);
+    const figures = [
+      typeof recovery.hrv === "number" ? `${t("HRV")} ${Math.round(recovery.hrv)} ms` : "",
+      typeof recovery.rhr === "number" ? `${Math.round(recovery.rhr)} bpm` : "",
+    ].filter(Boolean).join(" · ");
+    headline = h("div", { class: "int-balance" },
+      h("span", { style: `color:${color}`, text: String(score) }),
+      h("i", { text: "%" }),
+      h("em", { class: "int-ago", style: "margin-left:8px;font-style:normal", title: t("Resting heart rate"), text: figures }),
+    );
   } else {
     headline = h("div", { class: "int-status", text: t("Nothing scored yet") });
   }
@@ -531,8 +570,10 @@ function whoopCard(): HTMLElement {
   if (workout) {
     const sport = typeof workout.sport === "string" && workout.sport ? workout.sport : t("Last workout");
     const ws = typeof workout.strain === "number" ? workout.strain.toFixed(1) : "";
-    row(WHOOP_GREEN, sport, ws, workout.end);
+    row(WHOOP_GREEN, sport.charAt(0).toUpperCase() + sport.slice(1), ws, workout.end);
   }
+  // The headline takes a row's height.
+  rows.append(...list.slice(0, CARD_ROWS - 1));
   return h("div", { class: "int-card" }, header(WHOOP_GREEN, "Whoop", t("Recovery")), headline, rows);
 }
 
@@ -564,32 +605,32 @@ function calendarCard(): HTMLElement {
   const events = arr("integration_calendar", "events");
   const errors = arr("integration_calendar", "errors");
   const today = localDay(now, offset);
-  const rows = h("div", { class: "int-rows tight" });
-  for (const e of errors) {
-    rows.append(h("div", { class: "int-status", text: `${t("Calendar {n}", { n: Number(e.calendar) })}: ${String(e.error ?? "")}` }));
-  }
-  if (events.length === 0 && errors.length === 0) {
-    rows.append(h("div", { class: "int-empty", text: t("No events") }));
-  }
-  let lastDay: number | null = null;
-  for (const e of events.slice(0, 8)) {
+  const list: HTMLElement[] = [];
+  // Today's events say their hours; later ones say their day before the start,
+  // in the same column, so no row goes to a day heading.
+  for (const e of events) {
     const start = Number(e.start);
     const end = Number(e.end);
     const day = localDay(start, offset);
-    if (day !== lastDay) {
-      rows.append(h("div", { class: "int-status", text: calendarDayLabel(day, today) }));
-      lastDay = day;
-    }
     const ongoing = start <= now && end > now;
-    const when = e.allDay ? t("All day") : `${clock(start, offset)}–${clock(end, offset)}`;
-    rows.append(listRow(ongoing ? "#22C55E" : CAL_ORANGE, ongoing,
-      h("span", { class: "int-time", style: `color:${ongoing ? "#22C55E" : CAL_ORANGE}`, text: when }),
+    const when = day <= today
+      ? (e.allDay ? t("All day") : `${clock(start, offset)}–${clock(end, offset)}`)
+      : (e.allDay ? calendarDayLabel(day, today) : `${calendarDayLabel(day, today)} ${clock(start, offset)}`);
+    const accent = ongoing ? "#22C55E" : day <= today ? CAL_ORANGE : "#9398a1";
+    list.push(listRow(accent, ongoing,
+      h("span", { class: "int-time", style: `color:${accent}`, text: when }),
       h("span", { class: "int-name", title: typeof e.location === "string" ? e.location : "", text: String(e.title ?? "") }),
     ));
   }
-  const next = events.find((e) => Number(e.start) > now && !e.allDay);
-  const extra = next ? h("span", { text: t("Next at {time}", { time: clock(Number(next.start), offset) }) }) : undefined;
-  return h("div", { class: "int-card" }, header(CAL_ORANGE, t("Calendar"), t("Schedule"), extra), rows);
+  for (const e of errors) {
+    const text = `${t("Calendar {n}", { n: Number(e.calendar) })}: ${String(e.error ?? "")}`;
+    list.push(listRow("#F4505E", false, h("span", { class: "int-name", title: text, text })));
+  }
+  const rows = h("div", { class: "int-rows tight" });
+  if (list.length === 0) rows.append(h("div", { class: "int-empty", text: t("No events") }));
+  rows.append(...list.slice(0, CARD_ROWS));
+  // The first row already says what comes next: the header stays short.
+  return h("div", { class: "int-card" }, header(CAL_ORANGE, t("Calendar"), t("Schedule")), rows);
 }
 
 // ── n8n ───────────────────────────────────────────────────────────────────────

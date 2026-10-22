@@ -420,7 +420,7 @@ test("service cards say what the pills say and never an address, a subject, a de
   assert.equal(byId.integration_calendar.items[1].detail, "All day");
   assert.equal(byId.integration_whoop.headline, "Recovery 78 %");
   assert.deepEqual(byId.integration_whoop.items, [{ label: "Sleep", detail: "88 %" }, { label: "Strain", detail: "11.4" }, { label: "HRV", detail: "61 ms" }]);
-  assert.equal(byId.integration_homeassistant.headline, "1 notifications");
+  assert.equal(byId.integration_homeassistant.headline, "1 notification");
   assert.equal(byId.integration_homeassistant.reason, "Casa");
   assert.deepEqual(byId.integration_homeassistant.items, [
     { label: "Backup done", detail: "" },

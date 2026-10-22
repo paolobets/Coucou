@@ -352,6 +352,9 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  /* A longer translation widens the button instead of breaking its label. */
+  white-space: nowrap;
+  flex: 0 0 auto;
   transition: transform 0.08s ease-out, background 0.12s ease-out;
 }
 
@@ -1550,12 +1553,23 @@ input[type="range"]::-webkit-slider-thumb {
 .int-head b {
   font: 600 12px var(--font);
   color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  max-width: 70%;
+  flex: 0 0 auto;
 }
 
+/* The kind and the extra give way first, and never run under the ↗ button. */
 .int-head > span {
   font: 400 11px var(--font);
   color: var(--dim-2);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 0 3 auto;
 }
 
 .int-total {
@@ -1659,6 +1673,18 @@ input[type="range"]::-webkit-slider-thumb {
   font: 500 10px var(--mono);
   color: #c9956a;
   flex: 0 0 auto;
+}
+
+/* A value in words at the end of a row (an alarm state, a house's summary). */
+.int-note {
+  font: 500 10px var(--font);
+  margin-left: auto;
+  padding-left: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .int-more,

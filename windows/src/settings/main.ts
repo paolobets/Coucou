@@ -884,7 +884,8 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         }
       });
       return h("div", { class: "row" },
-        h("label", { style: "min-width:104px", text: t(field.label) }),
+        // One width for every label, so the inputs line up whatever the language.
+        h("label", { style: "flex:0 0 120px;width:120px;line-height:1.25", text: t(field.label) }),
         input, saveBtn, dotEl,
       );
     };
@@ -901,7 +902,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       const forget = h("button", { text: t("Disconnect") });
       const refresh = async () => {
         const on = (await Bridge.whoopConnected()) ?? false;
-        status.textContent = on ? t("Whoop connected.") : t("Connect Whoop first.");
+        status.textContent = on ? t("Whoop connected.") : t("Not connected");
         forget.hidden = !on;
       };
       connect.addEventListener("click", async () => {

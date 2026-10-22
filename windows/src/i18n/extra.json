@@ -5539,33 +5539,113 @@
    "tr": "Güncelleme mevcut",
    "it": "Aggiornamento disponibile"
   },
-  "{n} updates available": {
-   "zh-Hans": "{n} 个可用更新",
-   "hi": "{n} अपडेट उपलब्ध",
-   "es": "{n} actualizaciones disponibles",
-   "ar": "{n} تحديثات متوفرة",
-   "fr": "{n} mises à jour disponibles",
-   "bn": "{n}টি আপডেট পাওয়া যাচ্ছে",
-   "pt-BR": "{n} atualizações disponíveis",
-   "ru": "Доступно обновлений: {n}",
-   "id": "{n} pembaruan tersedia",
-   "de": "{n} Updates verfügbar",
-   "tr": "{n} güncelleme mevcut",
-   "it": "{n} aggiornamenti disponibili"
+  "{count} updates available": {
+   "zh-Hans": {
+    "other": "{count} 个可用更新"
+   },
+   "hi": {
+    "one": "{count} अपडेट उपलब्ध",
+    "other": "{count} अपडेट उपलब्ध"
+   },
+   "es": {
+    "one": "{count} actualización disponible",
+    "other": "{count} actualizaciones disponibles"
+   },
+   "ar": {
+    "zero": "{count} تحديث متاح",
+    "one": "تحديث واحد متاح",
+    "two": "تحديثان متاحان",
+    "few": "{count} تحديثات متاحة",
+    "many": "{count} تحديثًا متاحًا",
+    "other": "{count} تحديث متاح"
+   },
+   "fr": {
+    "one": "{count} mise à jour disponible",
+    "other": "{count} mises à jour disponibles"
+   },
+   "bn": {
+    "one": "{count}টি আপডেট উপলব্ধ",
+    "other": "{count}টি আপডেট উপলব্ধ"
+   },
+   "pt-BR": {
+    "one": "{count} atualização disponível",
+    "other": "{count} atualizações disponíveis"
+   },
+   "ru": {
+    "one": "{count} обновление доступно",
+    "few": "{count} обновления доступно",
+    "many": "{count} обновлений доступно",
+    "other": "{count} обновления доступно"
+   },
+   "id": {
+    "other": "{count} pembaruan tersedia"
+   },
+   "de": {
+    "one": "{count} Update verfügbar",
+    "other": "{count} Updates verfügbar"
+   },
+   "tr": {
+    "one": "{count} güncelleme var",
+    "other": "{count} güncelleme var"
+   },
+   "it": {
+    "one": "{count} aggiornamento disponibile",
+    "other": "{count} aggiornamenti disponibili"
+   }
   },
-  "{n} problems": {
-   "zh-Hans": "{n} 个问题",
-   "hi": "{n} समस्याएँ",
-   "es": "{n} problemas",
-   "ar": "{n} مشكلات",
-   "fr": "{n} problèmes",
-   "bn": "{n}টি সমস্যা",
-   "pt-BR": "{n} problemas",
-   "ru": "Проблем: {n}",
-   "id": "{n} masalah",
-   "de": "{n} Probleme",
-   "tr": "{n} sorun",
-   "it": "{n} problemi"
+  "{count} problems": {
+   "zh-Hans": {
+    "other": "{count} 个问题"
+   },
+   "hi": {
+    "one": "{count} समस्या",
+    "other": "{count} समस्याएँ"
+   },
+   "es": {
+    "one": "{count} problema",
+    "other": "{count} problemas"
+   },
+   "ar": {
+    "zero": "{count} مشكلة",
+    "one": "مشكلة واحدة",
+    "two": "مشكلتان",
+    "few": "{count} مشكلات",
+    "many": "{count} مشكلة",
+    "other": "{count} مشكلة"
+   },
+   "fr": {
+    "one": "{count} problème",
+    "other": "{count} problèmes"
+   },
+   "bn": {
+    "one": "{count}টি সমস্যা",
+    "other": "{count}টি সমস্যা"
+   },
+   "pt-BR": {
+    "one": "{count} problema",
+    "other": "{count} problemas"
+   },
+   "ru": {
+    "one": "{count} проблема",
+    "few": "{count} проблемы",
+    "many": "{count} проблем",
+    "other": "{count} проблемы"
+   },
+   "id": {
+    "other": "{count} masalah"
+   },
+   "de": {
+    "one": "{count} Problem",
+    "other": "{count} Probleme"
+   },
+   "tr": {
+    "one": "{count} sorun",
+    "other": "{count} sorun"
+   },
+   "it": {
+    "one": "{count} problema",
+    "other": "{count} problemi"
+   }
   },
   "All quiet": {
    "zh-Hans": "一切平静",
@@ -5707,19 +5787,59 @@
    "tr": "Bekliyor…",
    "it": "In attesa…"
   },
-  "{n} lights on": {
-   "zh-Hans": "{n} 盏灯亮着",
-   "hi": "{n} लाइट चालू",
-   "es": "{n} luces encendidas",
-   "ar": "{n} أضواء مشغّلة",
-   "fr": "{n} lumières allumées",
-   "bn": "{n}টি লাইট চালু",
-   "pt-BR": "{n} luzes acesas",
-   "ru": "Ламп включено: {n}",
-   "id": "{n} lampu menyala",
-   "de": "{n} Lampen an",
-   "tr": "{n} ışık açık",
-   "it": "{n} luci accese"
+  "{count} lights on": {
+   "zh-Hans": {
+    "other": "{count} 盏灯亮着"
+   },
+   "hi": {
+    "one": "{count} लाइट जल रही है",
+    "other": "{count} लाइटें जल रही हैं"
+   },
+   "es": {
+    "one": "{count} luz encendida",
+    "other": "{count} luces encendidas"
+   },
+   "ar": {
+    "zero": "{count} مصباح مضاء",
+    "one": "مصباح واحد مضاء",
+    "two": "مصباحان مضاءان",
+    "few": "{count} مصابيح مضاءة",
+    "many": "{count} مصباحًا مضاءً",
+    "other": "{count} مصباح مضاء"
+   },
+   "fr": {
+    "one": "{count} lumière allumée",
+    "other": "{count} lumières allumées"
+   },
+   "bn": {
+    "one": "{count}টি আলো জ্বলছে",
+    "other": "{count}টি আলো জ্বলছে"
+   },
+   "pt-BR": {
+    "one": "{count} luz acesa",
+    "other": "{count} luzes acesas"
+   },
+   "ru": {
+    "one": "{count} лампа горит",
+    "few": "{count} лампы горят",
+    "many": "{count} ламп горят",
+    "other": "{count} лампы горят"
+   },
+   "id": {
+    "other": "{count} lampu menyala"
+   },
+   "de": {
+    "one": "{count} Licht an",
+    "other": "{count} Lichter an"
+   },
+   "tr": {
+    "one": "{count} ışık açık",
+    "other": "{count} ışık açık"
+   },
+   "it": {
+    "one": "{count} luce accesa",
+    "other": "{count} luci accese"
+   }
   },
   "Notification": {
    "zh-Hans": "通知",
@@ -5735,33 +5855,113 @@
    "tr": "Bildirim",
    "it": "Notifica"
   },
-  "{n} notifications": {
-   "zh-Hans": "{n} 条通知",
-   "hi": "{n} सूचनाएँ",
-   "es": "{n} notificaciones",
-   "ar": "{n} إشعارات",
-   "fr": "{n} notifications",
-   "bn": "{n}টি বিজ্ঞপ্তি",
-   "pt-BR": "{n} notificações",
-   "ru": "Уведомлений: {n}",
-   "id": "{n} notifikasi",
-   "de": "{n} Benachrichtigungen",
-   "tr": "{n} bildirim",
-   "it": "{n} notifiche"
+  "{count} notifications": {
+   "zh-Hans": {
+    "other": "{count} 条通知"
+   },
+   "hi": {
+    "one": "{count} सूचना",
+    "other": "{count} सूचनाएँ"
+   },
+   "es": {
+    "one": "{count} notificación",
+    "other": "{count} notificaciones"
+   },
+   "ar": {
+    "zero": "{count} إشعار",
+    "one": "إشعار واحد",
+    "two": "إشعاران",
+    "few": "{count} إشعارات",
+    "many": "{count} إشعارًا",
+    "other": "{count} إشعار"
+   },
+   "fr": {
+    "one": "{count} notification",
+    "other": "{count} notifications"
+   },
+   "bn": {
+    "one": "{count}টি বিজ্ঞপ্তি",
+    "other": "{count}টি বিজ্ঞপ্তি"
+   },
+   "pt-BR": {
+    "one": "{count} notificação",
+    "other": "{count} notificações"
+   },
+   "ru": {
+    "one": "{count} уведомление",
+    "few": "{count} уведомления",
+    "many": "{count} уведомлений",
+    "other": "{count} уведомления"
+   },
+   "id": {
+    "other": "{count} notifikasi"
+   },
+   "de": {
+    "one": "{count} Benachrichtigung",
+    "other": "{count} Benachrichtigungen"
+   },
+   "tr": {
+    "one": "{count} bildirim",
+    "other": "{count} bildirim"
+   },
+   "it": {
+    "one": "{count} notifica",
+    "other": "{count} notifiche"
+   }
   },
-  "{n} houses": {
-   "zh-Hans": "{n} 个家",
-   "hi": "{n} घर",
-   "es": "{n} casas",
-   "ar": "{n} منازل",
-   "fr": "{n} maisons",
-   "bn": "{n}টি বাড়ি",
-   "pt-BR": "{n} casas",
-   "ru": "Домов: {n}",
-   "id": "{n} rumah",
-   "de": "{n} Häuser",
-   "tr": "{n} ev",
-   "it": "{n} case"
+  "{count} houses": {
+   "zh-Hans": {
+    "other": "{count} 个住所"
+   },
+   "hi": {
+    "one": "{count} घर",
+    "other": "{count} घर"
+   },
+   "es": {
+    "one": "{count} casa",
+    "other": "{count} casas"
+   },
+   "ar": {
+    "zero": "{count} منزل",
+    "one": "منزل واحد",
+    "two": "منزلان",
+    "few": "{count} منازل",
+    "many": "{count} منزلًا",
+    "other": "{count} منزل"
+   },
+   "fr": {
+    "one": "{count} maison",
+    "other": "{count} maisons"
+   },
+   "bn": {
+    "one": "{count}টি বাড়ি",
+    "other": "{count}টি বাড়ি"
+   },
+   "pt-BR": {
+    "one": "{count} casa",
+    "other": "{count} casas"
+   },
+   "ru": {
+    "one": "{count} дом",
+    "few": "{count} дома",
+    "many": "{count} домов",
+    "other": "{count} дома"
+   },
+   "id": {
+    "other": "{count} rumah"
+   },
+   "de": {
+    "one": "{count} Zuhause",
+    "other": "{count} Zuhause"
+   },
+   "tr": {
+    "one": "{count} ev",
+    "other": "{count} ev"
+   },
+   "it": {
+    "one": "{count} casa",
+    "other": "{count} case"
+   }
   },
   "Dismiss": {
    "zh-Hans": "关闭",
