@@ -21,6 +21,16 @@ pub const PANEL_H: f64 = 320.0;
 pub const STRIP_W: f64 = 360.0;
 pub const STRIP_H: f64 = 10.0;
 
+/// Whether the hidden island shrinks its window down to the wake strip.
+///
+/// Not on Windows: growing a transparent WebView2 window back to the panel
+/// just as the island animates open paints the new area white for a frame or
+/// more (the "big white square" on wake), and every resize makes it flicker.
+/// There the window keeps the panel's size, takes no mouse at all while hidden
+/// (WS_EX_TRANSPARENT), and the cursor poll wakes it when the pointer reaches
+/// the strip. Linux has no cursor to read (Wayland), so it keeps the strip.
+const SHRINK_WHEN_HIDDEN: bool = !platform::CURSOR_POLL;
+
 pub const WINDOW_LABEL: &str = "island";
 
 /// Margin around the island that still counts as "on the island", in logical px.
@@ -366,7 +376,7 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let mp = *m.position();
     let ms = *m.size();
 
-    let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
+    let (lw, lh) = if collapsed && SHRINK_WHEN_HIDDEN { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
@@ -465,10 +475,12 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 let (Ok(origin), Ok(size), Some((cx, cy))) = (win.outer_position(), win.inner_size(), cursor_physical()) else {
                     continue;
                 };
-                let inside = cx >= origin.x as f64
-                    && cx < (origin.x + size.width as i32) as f64
-                    && cy >= origin.y as f64
-                    && cy < (origin.y + size.height as i32) as f64;
+                let scale = win.scale_factor().unwrap_or(1.0);
+                let inside = on_wake_strip(
+                    (cx - origin.x as f64) / scale,
+                    (cy - origin.y as f64) / scale,
+                    size.width as f64 / scale,
+                );
                 if inside && !over_strip {
                     let _ = app.emit_to(WINDOW_LABEL, "wake-strip", ());
                 }
@@ -555,6 +567,37 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     });
 }
 
+/// True when a point in window-logical coordinates lies on the wake strip: the
+/// top-centre `STRIP_W` × `STRIP_H` of a window `window_w` wide, which is the
+/// whole window when it has been shrunk to the strip.
+fn on_wake_strip(x: f64, y: f64, window_w: f64) -> bool {
+    let left = ((window_w - STRIP_W) / 2.0).max(0.0);
+    x >= left && x < left + STRIP_W.min(window_w) && y >= 0.0 && y < STRIP_H
+}
+
+#[cfg(test)]
+mod wake_strip_tests {
+    use super::*;
+
+    #[test]
+    fn the_strip_is_the_top_centre_of_the_panel() {
+        let mid = PANEL_W / 2.0;
+        assert!(on_wake_strip(mid, 0.0, PANEL_W));
+        assert!(on_wake_strip(mid - STRIP_W / 2.0, STRIP_H - 1.0, PANEL_W));
+        assert!(!on_wake_strip(mid, STRIP_H, PANEL_W));
+        assert!(!on_wake_strip(mid, -1.0, PANEL_W));
+        assert!(!on_wake_strip(10.0, 0.0, PANEL_W));
+        assert!(!on_wake_strip(mid + STRIP_W / 2.0, 0.0, PANEL_W));
+    }
+
+    #[test]
+    fn a_window_shrunk_to_the_strip_is_all_strip() {
+        assert!(on_wake_strip(0.0, 0.0, STRIP_W));
+        assert!(on_wake_strip(STRIP_W - 1.0, STRIP_H - 1.0, STRIP_W));
+        assert!(!on_wake_strip(STRIP_W, 0.0, STRIP_W));
+    }
+}
+
 /// Re-applies click-through after the window or the island changed shape.
 ///
 /// With the cursor poll (Windows) the window takes the mouse again and the next
@@ -562,6 +605,14 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
 /// the island itself, or to the whole wake strip while collapsed.
 pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
     if platform::CURSOR_POLL {
+        if gate.collapsed.load(Ordering::Relaxed) && !SHRINK_WHEN_HIDDEN {
+            // Hidden at full size: nothing of the window may take a click
+            // meant for what sits under the top of the screen. The parked
+            // poll wakes the island from the cursor instead.
+            set_ignore_cursor(app, true);
+            gate.ignoring.store(true, Ordering::Relaxed);
+            return;
+        }
         set_ignore_cursor(app, false);
         gate.forget_ignore_state();
         return;
