@@ -140,27 +140,53 @@ pub fn authorize_url(client_id: &str, state: &str) -> String {
     )
 }
 
-/// The `code` and `state` of the request line the browser sends back
-/// (`GET /whoop?code=…&state=… HTTP/1.1`), or Whoop's error.
-pub fn parse_callback(request_line: &str) -> Result<(String, String), String> {
+/// What came back on the redirect: the `code` and `state` of the request line
+/// the browser sends (`GET /whoop?code=…&state=… HTTP/1.1`), Whoop's error
+/// with its description, or nothing usable at all.
+#[derive(Debug, PartialEq)]
+pub enum Callback {
+    Code { code: String, state: String },
+    Refused(String),
+    /// A request on the path with neither a code nor an error: not Whoop's
+    /// redirect (a prefetch, a reload of an old tab). Waited past.
+    Empty,
+}
+
+pub fn parse_callback(request_line: &str) -> Result<Callback, String> {
     let path = request_line.split_whitespace().nth(1).ok_or("not an HTTP request")?;
     let query = path.split_once('?').map(|(_, q)| q).unwrap_or("");
     let mut code = None;
     let mut state = None;
     let mut error = None;
+    let mut description = None;
     for pair in query.split('&') {
         let (k, v) = pair.split_once('=').unwrap_or((pair, ""));
         match k {
-            "code" => code = Some(decode(v)),
+            "code" if !v.is_empty() => code = Some(decode(v)),
             "state" => state = Some(decode(v)),
             "error" => error = Some(decode(v)),
+            "error_description" => description = Some(decode(v)),
             _ => {}
         }
     }
     if let Some(error) = error {
-        return Err(error);
+        return Ok(Callback::Refused(match description {
+            Some(d) if !d.is_empty() => format!("{error} ({d})"),
+            _ => error,
+        }));
     }
-    Ok((code.ok_or("no code in the redirect")?, state.unwrap_or_default()))
+    Ok(match code {
+        Some(code) => Callback::Code { code, state: state.unwrap_or_default() },
+        None => Callback::Empty,
+    })
+}
+
+/// The names of the query's parameters, never their values, for the log.
+fn query_keys(request_line: &str) -> String {
+    let path = request_line.split_whitespace().nth(1).unwrap_or("");
+    let query = path.split_once('?').map(|(_, q)| q).unwrap_or("");
+    let keys: Vec<&str> = query.split('&').filter(|p| !p.is_empty()).map(|p| p.split('=').next().unwrap_or("")).collect();
+    if keys.is_empty() { "none".to_string() } else { keys.join(", ") }
 }
 
 fn random_state() -> Result<String, String> {
@@ -233,8 +259,24 @@ async fn sign_in(client_id: &str, client_secret: &str) -> Result<(), String> {
             let _ = socket.write_all(b"HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n").await;
             continue;
         }
-        let outcome = parse_callback(&line).and_then(|(code, got)| {
-            if got == state { Ok(code) } else { Err("state mismatch".into()) }
+        let parsed = parse_callback(&line);
+        crate::log::line(format!("whoop: redirect back with parameters: {}", query_keys(&line)));
+        if parsed == Ok(Callback::Empty) {
+            // Not the redirect: say so to whatever asked, and keep waiting.
+            let page = crate::i18n::t("Waiting for Whoop in the browser…");
+            let _ = socket
+                .write_all(
+                    format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nConnection: close\r\nContent-Length: {}\r\n\r\n{page}", page.len())
+                        .as_bytes(),
+                )
+                .await;
+            continue;
+        }
+        let outcome = parsed.and_then(|c| match c {
+            Callback::Code { code, state: got } if got == state => Ok(code),
+            Callback::Code { .. } => Err("state mismatch".into()),
+            Callback::Refused(e) => Err(e),
+            Callback::Empty => unreachable!("answered above"),
         });
         let (status, text) = match &outcome {
             Ok(_) => ("200 OK", crate::i18n::t("Whoop connected. You can close this tab and go back to Coucou.")),
@@ -407,10 +449,21 @@ mod tests {
 
     #[test]
     fn the_redirect_is_parsed_and_errors_are_kept() {
-        assert_eq!(parse_callback("GET /whoop?code=ab%2Fcd&state=xyz HTTP/1.1"), Ok(("ab/cd".into(), "xyz".into())));
-        assert_eq!(parse_callback("GET /whoop?state=xyz HTTP/1.1"), Err("no code in the redirect".into()));
-        assert_eq!(parse_callback("GET /whoop?error=access_denied&state=xyz HTTP/1.1"), Err("access_denied".into()));
+        assert_eq!(
+            parse_callback("GET /whoop?code=ab%2Fcd&state=xyz HTTP/1.1"),
+            Ok(Callback::Code { code: "ab/cd".into(), state: "xyz".into() })
+        );
+        assert_eq!(parse_callback("GET /whoop?state=xyz HTTP/1.1"), Ok(Callback::Empty));
+        assert_eq!(parse_callback("GET /whoop HTTP/1.1"), Ok(Callback::Empty));
+        assert_eq!(parse_callback("GET /whoop?code=&state=xyz HTTP/1.1"), Ok(Callback::Empty));
+        assert_eq!(parse_callback("GET /whoop?error=access_denied&state=xyz HTTP/1.1"), Ok(Callback::Refused("access_denied".into())));
+        assert_eq!(
+            parse_callback("GET /whoop?error=invalid_scope&error_description=The+scope+is+not+allowed&state=x HTTP/1.1"),
+            Ok(Callback::Refused("invalid_scope (The scope is not allowed)".into()))
+        );
         assert!(parse_callback("garbage").is_err());
+        assert_eq!(query_keys("GET /whoop?code=secret&state=s HTTP/1.1"), "code, state");
+        assert_eq!(query_keys("GET /whoop HTTP/1.1"), "none");
     }
 
     #[test]
