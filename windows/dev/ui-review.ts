@@ -6,6 +6,7 @@ import "../src/style.css";
 import { Island } from "../src/island/island";
 import { State } from "../src/core/state";
 import { setLanguage } from "../src/i18n/i18n";
+import { Updates } from "../src/island/update";
 
 const q = new URLSearchParams(location.search);
 const scene = q.get("scene") ?? "overview";
@@ -59,6 +60,10 @@ switch (scene) {
   case "settings": go(() => island.expand("settings")); break;
   case "wardrobe": go(() => island.expand("wardrobe")); break;
   case "update": go(() => island.expand("update")); break;
+  case "update-ask": Updates.asking = true; go(() => island.expand("update")); break;
+  case "update-new":
+    Updates.status = { ...Updates.status, current: "0.5.1", latest: { version: "0.6.0", headline: "Home Assistant, Whoop e Calendario", pageUrl: "" }, canInstall: true } as any;
+    go(() => island.expand("update")); break;
   default:
     if (scene.startsWith("integration_")) { State.setFocus(scene); go(() => island.expand("overview")); }
 }
@@ -68,5 +73,10 @@ if (scene === "wake") {
   Object.assign(window, {
     revealIsland: () => island.reveal(),
     expandIsland: () => island.expand("overview"),
+    askUpdate: () => { Updates.asking = true; island.alert("update"); },
+    announceUpdate: () => {
+      Updates.status = { ...Updates.status, current: "0.5.1", latest: { version: "0.6.0", headline: "Home Assistant, Whoop e Calendario", pageUrl: "" }, canInstall: true } as any;
+      island.alert("update"); island.emote("surprised");
+    },
   });
 }

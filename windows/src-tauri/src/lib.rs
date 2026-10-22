@@ -660,7 +660,12 @@ fn shortcuts_suspend(app: AppHandle, shared: State<Shared>, suspended: bool) {
 /// for the *same* arguments as the island (see `additionalBrowserArgs` in
 /// tauri.conf.json) — a mismatch makes the second window come up blank, with no
 /// error anywhere.
-pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+///
+/// CalculateNativeWinOcclusion is off: Chromium stops painting a window it
+/// thinks is covered (Mochi parked off-screen, every window while the screen
+/// is locked or asleep) and drops its frame, and a transparent window then
+/// comes back as a white square until the next paint.
+pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion --autoplay-policy=no-user-gesture-required";
 
 /// In a dev build the pages are served by Vite, so the second window needs the
 /// absolute dev URL; a bundled build resolves it inside the app bundle.

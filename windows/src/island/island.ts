@@ -99,6 +99,8 @@ export class Island {
   private confusedRecovery: number | null = null;
   private prevViewBeforeConfused: IslandViewName = "overview";
   private lastSyncedView: IslandViewName | null = null;
+  /** The content was showing at the last DOM sync (expanded, not the greeting). */
+  private contentWasLive = false;
 
   /** The launch greeting ended, or the island came out of hidden — two of the
    *  moments the Monday recap may open (see src/recap/recap.ts). */
@@ -1167,6 +1169,14 @@ export class Island {
     if (State.wardrobePreview && !(expanded && State.view === "wardrobe")) State.wardrobePreview = null;
 
     this.header.sync();
+    // Opening the island: whatever view was last on (the overview, usually)
+    // must not fade out while the content fades in, or it shows for a moment
+    // under the card the island opened for. The new view is simply there.
+    if (live && !this.contentWasLive) {
+      this.viewsEl.classList.add("no-fade");
+      requestAnimationFrame(() => requestAnimationFrame(() => this.viewsEl.classList.remove("no-fade")));
+    }
+    this.contentWasLive = live;
     for (const [name, view] of this.views) {
       const on = name === State.view;
       view.el.classList.toggle("on", on);
@@ -1188,6 +1198,9 @@ export class Island {
 
     // Compact mini grid
     const showGrid = State.mode === "compact";
+    // It goes at once when the island opens, rather than fading over the
+    // pills of the card coming in at the same place.
+    this.miniGrid.style.transition = showGrid ? "" : "none";
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {
       const others = State.otherTasks.slice(0, 4);
